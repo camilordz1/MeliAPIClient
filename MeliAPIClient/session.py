@@ -18,7 +18,7 @@ class Session:
 
         self.access()
 
-    def access(self):
+    def access(self) -> dict:
 
         time_flag = timedelta(hours=5, minutes=59, seconds=0.0)
         date_token = datetime.fromisoformat(self.ml_token['date'])
@@ -35,7 +35,7 @@ class Session:
 
         return self.ml_token
 
-    def refresh(self):
+    def refresh(self) -> None:
 
         url = "https://api.mercadolibre.com/oauth/token"
 
@@ -55,8 +55,6 @@ class Session:
 
         ml_response: dict = json.loads(response.text)
         ml_response["date"] = datetime.isoformat(datetime.now())
-
-        print(ml_response)
 
         write("ml_token.json", ml_response)
 

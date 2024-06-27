@@ -1,16 +1,16 @@
 from datetime import datetime, timedelta
 from requests import request
+from typing import Union
 import json
 
 
 class Session:
 
-    def __init__(self, keys: json, token: json, user: json) -> None:
+    def __init__(
+        self, keys: Union[dict, str], token: Union[dict, str], user: Union[dict, str]
+    ) -> None:
 
-        self.headers: dict = {
-            "Authorization": "",
-            "format-new": "true"
-        }
+        self.headers: dict = {"Authorization": "", "format-new": "true"}
 
         self.ml_keys = read(keys)
         self.ml_token = read(token)
@@ -21,17 +21,15 @@ class Session:
     def access(self) -> dict:
 
         time_flag = timedelta(hours=5, minutes=59, seconds=0.0)
-        date_token = datetime.fromisoformat(self.ml_token['date'])
-        token_time = datetime.now()-date_token
+        date_token = datetime.fromisoformat(self.ml_token["date"])
+        token_time = datetime.now() - date_token
 
         if time_flag > token_time:
-            self.headers['Authorization'] = \
-                f'Bearer {self.ml_token["access_token"]}'
+            self.headers["Authorization"] = f'Bearer {self.ml_token["access_token"]}'
             return self.ml_token
 
         self.refresh()
-        self.headers['Authorization'] = \
-            f'Bearer {self.ml_token["access_token"]}'
+        self.headers["Authorization"] = f'Bearer {self.ml_token["access_token"]}'
 
         return self.ml_token
 
@@ -41,14 +39,14 @@ class Session:
 
         payload: dict = {
             "grant_type": "refresh_token",
-            "client_id": self.ml_keys['client_id'],
-            "client_secret": self.ml_keys['client_secret'],
-            "refresh_token": self.ml_token['refresh_token']
+            "client_id": self.ml_keys["client_id"],
+            "client_secret": self.ml_keys["client_secret"],
+            "refresh_token": self.ml_token["refresh_token"],
         }
 
         headers: dict = {
-            'accept': 'application/json',
-            'content-type': 'application/x-www-form-urlencoded'
+            "accept": "application/json",
+            "content-type": "application/x-www-form-urlencoded",
         }
 
         response = request("POST", url, headers=headers, data=payload)
@@ -59,13 +57,14 @@ class Session:
         write("ml_token.json", ml_response)
 
 
-def read(file_name: str) -> dict:
-    with open(file_name, "r") as content:
-        return (json.load(content))
-
+def read(file_name: Union[dict, str]) -> dict:
+    if file_name.endswith(".json"):
+        with open(file_name, "r") as content:
+            return json.load(content)
+    return file_name
 
 def write(file_name: str, data: dict) -> None:
-    with open(file_name, 'w') as content:
+    with open(file_name, "w") as content:
         json.dump(data, content, ensure_ascii=False, indent=2)
 
 

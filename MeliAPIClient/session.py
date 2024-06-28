@@ -28,7 +28,7 @@ class Session:
             self.headers["Authorization"] = f'Bearer {self.ml_token["access_token"]}'
             return self.ml_token
 
-        self.refresh()
+        self.ml_token = self.refresh()
         self.headers["Authorization"] = f'Bearer {self.ml_token["access_token"]}'
 
         return self.ml_token
@@ -55,6 +55,8 @@ class Session:
         ml_response["date"] = datetime.isoformat(datetime.now())
 
         write("ml_token.json", ml_response)
+
+        return ml_response
 
 
 def read(file_name: Union[dict, str]) -> dict:

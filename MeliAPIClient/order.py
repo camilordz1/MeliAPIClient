@@ -9,26 +9,38 @@ class Order(Actions):
 
         self.session = session
 
-    def date(self, year=None, month=None):
+    def date(
+        self, year: int = None, month: int = None, start: int = None, end: int = None
+    ):
 
         dt = datetime.now()
 
         if year is not None and month is not None:
-            dt = datetime(year, month, 1)
+            dt = datetime(year, month, 1 if start is None else start)
 
-        days = monthrange(int(dt.strftime("%Y")), int(dt.strftime("%m")))[1]
+        if start is not None:
+            start = str(start).zfill(2)
 
-        date: dict = {"start": dt.strftime("%Y-%m-01T00:00:00.000-00:00"),
-                      "end": dt.strftime(f"%Y-%m-{days}T23:59:59.000-00:00"),
-                      "year": int(dt.strftime("%Y")),
-                      "month": str(dt.strftime("%b"))}
+        if end is not None:
+            end = str(end).zfill(2)
+
+        if end is None:
+            end = monthrange(int(dt.strftime("%Y")), int(dt.strftime("%m")))[1]
+
+        date: dict = {
+            "start": dt.strftime(
+                f"%Y-%m-{'01' if start is None else start}T00:00:00.000-00:00"
+            ),
+            "end": dt.strftime(f"%Y-%m-{end}T23:59:59.000-00:00"),
+            "year": int(dt.strftime("%Y")),
+            "month": str(dt.strftime("%b")),
+        }
 
         return date
 
     def list(self, offset=0, year=None, month=None):
-
-        '''read orders from mercado libre api, max 50 orders, and starts with \
-            a order offset to read new orders'''
+        """read orders from mercado libre api, max 50 orders, and starts with \
+            a order offset to read new orders"""
 
         # set date range
         date = self.date(year, month)
@@ -42,7 +54,7 @@ class Order(Actions):
             "order.date_created.to": date["end"],
             "limit": 50,
             "sort": "date_asc",
-            "offset": offset
+            "offset": offset,
         }
         print(params)
         response = self.get(url, self.session.headers, params)

@@ -4,7 +4,7 @@ from setuptools import setup
 this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
-VERSION = '0.0.3'
+VERSION = '0.0.4'
 DESCRIPTION = 'Este paquete nos permite consumir el API de mercado libre'
 PACKAGE_NAME = 'MeliAPIClient'
 AUTHOR = 'Camilo Andrés Rodríguez Higuera'

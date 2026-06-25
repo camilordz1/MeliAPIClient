@@ -1,14 +1,18 @@
-from datetime import datetime, timedelta
-from requests import request
-from typing import Union
+from datetime import datetime
 import json
 import os
+from typing import Union
 from dotenv import load_dotenv
+from .client import MeliClient
+from .storage import FileTokenStorage
 
 # Cargar las variables desde el archivo .env
 load_dotenv()
 
+
 class Session:
+    """Capa de compatibilidad clásica para la gestión de sesiones y tokens."""
+
     def __init__(
         self,
         keys: Union[dict, str] = None,
@@ -22,48 +26,40 @@ class Session:
         self.ml_token = read(token) if token else self.load_env_token()
         self.ml_user = read(user) if user else {}
 
+        # Determinar el archivo para persistir el token
+        token_path = token if isinstance(token, str) and token.endswith(".json") else "ml_token.json"
+        
+        self.token_storage = FileTokenStorage(token_path)
+        
+        # Si el token se pasó como un diccionario, o si el archivo no existe, lo inicializamos
+        if isinstance(token, dict) or not os.path.exists(token_path):
+            self.token_storage.save_token(self.ml_token)
+
+        # Inicializar el cliente moderno internamente
+        self.client = MeliClient(
+            client_id=self.ml_keys.get("client_id", ""),
+            client_secret=self.ml_keys.get("client_secret", ""),
+            token_storage=self.token_storage,
+        )
+
         self.access()
 
     def access(self) -> dict:
-        """Actualiza el token de acceso si ha expirado."""
-        time_flag = timedelta(hours=5, minutes=59, seconds=0.0)
-        date_token = datetime.fromisoformat(self.ml_token["date"])
-        token_time = datetime.now() - date_token
-
-        if time_flag > token_time:
-            self.headers["Authorization"] = f'Bearer {self.ml_token["access_token"]}'
-            return self.ml_token
-
-        self.ml_token = self.refresh()
-        self.headers["Authorization"] = f'Bearer {self.ml_token["access_token"]}'
+        """Actualiza el token de acceso si ha expirado delegando en el cliente moderno."""
+        self.client.ensure_token_valid()
+        self.ml_token = self.token_storage.load_token()
+        self.headers["Authorization"] = f"Bearer {self.ml_token.get('access_token')}"
         return self.ml_token
 
     def refresh(self) -> dict:
         """Obtiene un nuevo token de acceso usando el refresh token."""
-        url = "https://api.mercadolibre.com/oauth/token"
-
-        payload: dict = {
-            "grant_type": "refresh_token",
-            "client_id": self.ml_keys["client_id"],
-            "client_secret": self.ml_keys["client_secret"],
-            "refresh_token": self.ml_token["refresh_token"],
-        }
-
-        headers: dict = {
-            "accept": "application/json",
-            "content-type": "application/x-www-form-urlencoded",
-        }
-
-        response = request("POST", url, headers=headers, data=payload)
-
-        if response.status_code != 200:
-            raise ValueError(f"Error refreshing token: {response.text}")
-
-        ml_response: dict = json.loads(response.text)
-        ml_response["date"] = datetime.isoformat(datetime.now())
-
-        write("ml_token.json", ml_response)  # Guardar token actualizado en archivo
-        return ml_response
+        refresh_token_str = self.ml_token.get("refresh_token")
+        if not refresh_token_str:
+            raise ValueError("No refresh token available to perform renewal.")
+            
+        self.ml_token = self.client.refresh_token(refresh_token_str)
+        self.headers["Authorization"] = f"Bearer {self.ml_token.get('access_token')}"
+        return self.ml_token
 
     def load_env_keys(self) -> dict:
         """Carga las credenciales de Mercado Libre desde las variables de entorno."""
@@ -84,17 +80,8 @@ class Session:
 def read(file_name: Union[dict, str]) -> dict:
     """Lee un archivo JSON o retorna directamente el diccionario proporcionado."""
     if isinstance(file_name, str) and file_name.endswith(".json"):
+        if not os.path.exists(file_name):
+            return {}
         with open(file_name, "r") as content:
             return json.load(content)
     return file_name
-
-
-def write(file_name: str, data: dict) -> None:
-    """Escribe un diccionario en un archivo JSON."""
-    with open(file_name, "w") as content:
-        json.dump(data, content, ensure_ascii=False, indent=2)
-
-
-if __name__ == "__main__":
-    session = Session()  # Usará las variables del entorno por defecto
-    print(session.ml_user)  # Si tienes datos en el usuario

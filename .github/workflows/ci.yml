@@ -79,7 +79,7 @@ jobs:
               for name in names
               if not (
                   name.startswith("meli_sdk/")
-                  or (name.startswith("meli_sdk-") and ".dist-info/" in name)
+                  or (name.startswith("meli_python_sdk-") and ".dist-info/" in name)
               )
           ]
           print("unexpected wheel entries:", unexpected)
@@ -89,7 +89,7 @@ jobs:
         run: |
           python -m venv /tmp/msdk-check
           /tmp/msdk-check/bin/pip install -q dist/*.whl
-          /tmp/msdk-check/bin/python -c "import importlib.metadata as m, meli_sdk as s; assert m.version('meli-sdk') == s.__version__, (m.version('meli-sdk'), s.__version__)"
+          /tmp/msdk-check/bin/python -c "import importlib.metadata as m, meli_sdk as s; assert m.version('meli-python-sdk') == s.__version__, (m.version('meli-python-sdk'), s.__version__)"
 
   shim:
     runs-on: ubuntu-latest

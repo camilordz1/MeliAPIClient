@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "meli-sdk"
+name = "meli-python-sdk"
 dynamic = ["version"]
 description = "Unofficial Python SDK for the Mercado Libre API"
 readme = "README.md"

@@ -1,7 +1,7 @@
-"""Deprecated name of meli-sdk.
+"""Deprecated name of meli-python-sdk.
 
 This package only exists so that ``pip install MeliAPIClient`` points users to the new
-distribution. Install ``meli-sdk`` and import ``meli_sdk`` instead.
+distribution. Install ``meli-python-sdk`` and import ``meli_sdk`` instead.
 """
 
 import importlib
@@ -30,8 +30,8 @@ for _name in _SUBMODULES:
     globals()[_name] = _module
 
 warnings.warn(
-    "MeliAPIClient was renamed to meli-sdk. "
-    "Run 'pip install meli-sdk' and import 'meli_sdk' instead. "
+    "MeliAPIClient was renamed to meli-python-sdk. "
+    "Run 'pip install meli-python-sdk' and import 'meli_sdk' instead. "
     "This package will not receive further updates.",
     FutureWarning,
     stacklevel=2,

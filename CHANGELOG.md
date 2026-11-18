@@ -16,8 +16,13 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
 - Reintentos automáticos y seguros: `429` para todos los métodos, `500`/`502`/`503`/`504` y errores
   de conexión solo para métodos idempotentes, con backoff exponencial y soporte de `Retry-After`
   (`max_retries`, `backoff_factor` y `max_backoff` configurables).
+- Reintento automático una vez cuando una petición responde `401`, renovando el token antes.
+- `TokenStorage.lock()` para serializar las renovaciones, y `lock_callback` en
+  `CallbackTokenStorage` para usar un lock de base de datos.
 
 ### Corregido
+- La carrera entre renovaciones concurrentes ya no invalida la sesión: el refresh token se canjea
+  una sola vez y los hilos que esperan reutilizan el token nuevo.
 - Las peticiones y la renovación del token usan una `requests.Session` persistente y un timeout
   por defecto de 30 segundos.
 

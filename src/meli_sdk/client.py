@@ -1,5 +1,6 @@
 import logging
 import math
+import threading
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
@@ -109,6 +110,7 @@ class MeliClient:
         self.backoff_factor = _validate_backoff_factor(backoff_factor)
         self.max_backoff = _validate_max_backoff(max_backoff)
         self._sleep = time.sleep
+        self._refresh_lock = threading.Lock()
 
         # Recursos (Lazy imports or direct instantiations to avoid circular dependencies)
         from .bills import Bills
@@ -146,8 +148,17 @@ class MeliClient:
 
         try:
             response = self._send(method, url, headers=headers, timeout=timeout, **kwargs)
+
+            if response.status_code == 401 and self._rewind_files(kwargs.get("files")):
+                access_token = self._refresh_under_lock(stale_access_token=access_token)
+                headers["Authorization"] = f"Bearer {access_token}"
+                response = self._send(
+                    method, url, headers=headers, timeout=timeout, **kwargs
+                )
         except requests.RequestException as e:
-            raise MeliConnectionError(f"Error de conexión con la API de Mercado Libre: {e}") from e
+            raise MeliConnectionError(
+                f"Error de conexión con la API de Mercado Libre: {e}"
+            ) from e
 
         # Manejar respuestas con errores
         if response.status_code >= 400:
@@ -303,31 +314,42 @@ class MeliClient:
         if not token_data:
             raise MeliTokenExpiredError("No hay un token almacenado. Debe autenticarse primero.")
 
+        if self._token_is_valid(token_data):
+            return token_data["access_token"]
+
+        return self._refresh_under_lock()
+
+    def _token_is_valid(self, token_data: dict) -> bool:
+        """Return True when the access token is outside the refresh buffer."""
         access_token = token_data.get("access_token")
-        refresh_token_str = token_data.get("refresh_token")
         expires_at = token_data.get("expires_at")
+        if not access_token or not expires_at:
+            return False
+        return time.time() < (expires_at - self.token_buffer_seconds)
 
-        # Si el token no tiene fecha de expiración calculada, intentamos calcularla o refrescar
-        now = time.time()
+    def _refresh_under_lock(self, stale_access_token=None) -> str:
+        """Refresh the token once, re-reading the storage inside both locks."""
+        with self._refresh_lock, self.token_storage.lock():
+            token_data = self.token_storage.load_token()
 
-        # Si expires_at no está o faltan menos de buffer_seconds para expirar
-        is_expired = (
-            not expires_at
-            or not access_token
-            or now >= (expires_at - self.token_buffer_seconds)
-        )
+            if not token_data:
+                raise MeliTokenExpiredError(
+                    "No hay un token almacenado. Debe autenticarse primero."
+                )
 
-        if is_expired:
+            access_token = token_data.get("access_token")
+            if self._token_is_valid(token_data) and (
+                stale_access_token is None or access_token != stale_access_token
+            ):
+                return access_token
+
+            refresh_token_str = token_data.get("refresh_token")
             if not refresh_token_str:
                 raise MeliTokenExpiredError(
                     "El access token ha expirado y no hay un refresh token disponible."
                 )
 
-            # Renovar token
-            new_token_data = self.refresh_token(refresh_token_str)
-            return new_token_data["access_token"]
-
-        return access_token
+            return self.refresh_token(refresh_token_str)["access_token"]
 
     def refresh_token(self, refresh_token_str: str) -> dict:
         """Solicita un nuevo token de acceso usando el token de refresco."""

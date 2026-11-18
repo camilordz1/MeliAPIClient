@@ -155,6 +155,46 @@ En el peor caso, una petición puede tardar hasta `(max_retries + 1) × timeout`
 backoff (unos 2 minutos con los valores por defecto) antes de fallar. Para acotar ese tiempo, reduce
 `max_retries` o `timeout`.
 
+### Concurrencia y refresh del token
+
+Los refresh tokens de Mercado Libre son de un solo uso: al canjear uno, deja de ser válido. Para
+evitar que varias peticiones simultáneas quemen el mismo refresh token, el cliente serializa las
+renovaciones por instancia y por almacenamiento. Si otro hilo u otro cliente ya renovó el token, se
+reutiliza el nuevo sin volver a llamar a `/oauth/token`.
+
+`MemoryTokenStorage` y `FileTokenStorage` incluyen un lock. En `FileTokenStorage` el lock es por ruta
+absoluta dentro del mismo proceso, así que **no coordina procesos separados**. Para varios procesos,
+usa `CallbackTokenStorage` con un lock de base de datos:
+
+```python
+import contextlib
+from meli_sdk import CallbackTokenStorage, MeliClient
+
+@contextlib.contextmanager
+def db_lock():
+    # Pseudocódigo: advisory lock o transacción SELECT ... FOR UPDATE
+    # with connection.transaction():
+    #     connection.execute("SELECT pg_advisory_lock(42)")
+    #     try:
+    yield
+    #     finally:
+    #         connection.execute("SELECT pg_advisory_unlock(42)")
+
+storage = CallbackTokenStorage(
+    load_callback=load_token_from_db,
+    save_callback=save_token_to_db,
+    lock_callback=db_lock,
+)
+client = MeliClient(
+    client_id="TU_CLIENT_ID",
+    client_secret="TU_CLIENT_SECRET",
+    token_storage=storage,
+)
+```
+
+Además, si una petición responde `401`, el cliente renueva el token una vez y reintenta la petición
+con el nuevo token. Un segundo `401` se reporta como error.
+
 ---
 
 ## Persistencia en Bases de Datos (Estrategia `CallbackTokenStorage`)

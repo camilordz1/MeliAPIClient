@@ -199,9 +199,9 @@ def test_max_retries_zero_disables_retries(storage, mocked, sleeps):
     assert sleeps == []
 
 
-@pytest.mark.parametrize("status", [400, 401, 403, 404])
+@pytest.mark.parametrize("status", [400, 403, 404])
 def test_4xx_other_than_429_is_not_retried(client, mocked, sleeps, status):
-    """Other 4xx statuses are never retried."""
+    """Other 4xx statuses are never retried by the retry loop (401 has its own refresh path)."""
     mocked.add(responses.GET, f"{API_URL}/users/me", status=status, json={"message": "no"})
 
     with pytest.raises(MeliAPIError) as exc_info:

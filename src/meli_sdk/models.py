@@ -191,6 +191,8 @@ def _parse_billing_v1(billing: dict, raw: dict) -> BillingInfo:
         name, last_name = company_name, None
     else:
         name, last_name = info.get("FIRST_NAME"), info.get("LAST_NAME")
+        if not name and not last_name:
+            name = _clean(billing.get("name"))
 
     street_name = info.get("STREET_NAME")
     street_number = info.get("STREET_NUMBER")

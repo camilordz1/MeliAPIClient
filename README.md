@@ -251,6 +251,10 @@ if billing is not None:
     print(billing.address.city, billing.address.zip_code)
 ```
 
+En Colombia (MCO), el endpoint nuevo de facturación no devuelve el código postal de facturación, así
+que `address.zip_code` suele ser `None`. Si tu aplicación lo necesita, obtenlo de otra fuente; no
+asumas que el código postal del envío es el de facturación, porque las direcciones pueden diferir.
+
 `shipments.get_normalized(shipment_id)` devuelve un `ShipmentInfo` con el estado, el seguimiento, el
 costo (un `Decimal`) y la dirección de entrega:
 

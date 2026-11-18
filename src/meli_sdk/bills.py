@@ -32,6 +32,10 @@ class Bills:
         Uses ``buyer.billing_info.id`` from the order against the new endpoint, falling back to
         the deprecated legacy endpoint (v2, then v1) when the id is missing or the new endpoint
         returns 404.
+
+        For MCO, the new billing-info endpoint does not return the billing zip code, so
+        ``address.zip_code`` is usually None. Do not assume the shipping zip code is the billing
+        one; if your app needs it, get it from another source.
         """
         if order is None:
             order = self.client.orders.get(order_id)

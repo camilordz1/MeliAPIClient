@@ -203,3 +203,40 @@ def test_shipment_address_line_built_from_street():
     }
 
     assert parse_shipment(payload).address.address_line == "Calle Falsa 123"
+
+
+def test_parse_legacy_v1_falls_back_to_billing_name():
+    """Without a company or person name, billing_info.name is used."""
+    payload = {
+        "billing_info": {
+            "name": "Empresa Sin Documento",
+            "additional_info": [
+                {"type": "DOC_NUMBER", "value": "DOC-1"},
+                {"type": "FIRST_NAME", "value": ""},
+                {"type": "LAST_NAME", "value": ""},
+            ],
+        }
+    }
+
+    info = parse_billing_info(payload, source="legacy-v1")
+
+    assert info.name == "Empresa Sin Documento"
+    assert info.last_name is None
+
+
+def test_parse_legacy_v1_person_name_wins_over_billing_name():
+    """FIRST_NAME/LAST_NAME win over the billing_info.name fallback."""
+    payload = {
+        "billing_info": {
+            "name": "Billing Name",
+            "additional_info": [
+                {"type": "FIRST_NAME", "value": "Carlos"},
+                {"type": "LAST_NAME", "value": "Perez"},
+            ],
+        }
+    }
+
+    info = parse_billing_info(payload, source="legacy-v1")
+
+    assert info.name == "Carlos"
+    assert info.last_name == "Perez"

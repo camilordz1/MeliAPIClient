@@ -4,7 +4,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit
 
 import requests
 
@@ -16,6 +16,15 @@ logger = logging.getLogger("meli_sdk")
 
 RETRYABLE_STATUSES = frozenset({500, 502, 503, 504})
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "PUT", "DELETE"})
+AUTH_HOSTS = {
+    "MCO": "auth.mercadolibre.com.co",
+    "MLA": "auth.mercadolibre.com.ar",
+    "MLM": "auth.mercadolibre.com.mx",
+    "MLB": "auth.mercadolivre.com.br",
+    "MLC": "auth.mercadolibre.cl",
+    "MPE": "auth.mercadolibre.com.pe",
+    "MLU": "auth.mercadolibre.com.uy",
+}
 
 
 def _validate_timeout(timeout):
@@ -411,16 +420,95 @@ class MeliClient:
             raise MeliTokenExpiredError(f"Fallo al renovar el token: {message}")
 
         token_response = response.json()
+        return self._store_token_response(token_response)
 
-        # Enriquecer respuesta con marcas de tiempo calculadas locales en segundos UTC
+    def _store_token_response(self, token_response: dict) -> dict:
+        """Add local timestamps to a token response and persist it."""
         now = time.time()
         token_response["created_at"] = now
         token_response["expires_at"] = now + token_response.get("expires_in", 21600)
-
-        # Guardar en almacenamiento
         self.token_storage.save_token(token_response)
-
         return token_response
+
+    def get_authorization_url(
+        self,
+        redirect_uri: str,
+        state: str,
+        site_id: str = "MCO",
+        code_challenge: str | None = None,
+    ) -> str:
+        """Return the URL that starts the authorization-code flow.
+
+        ``state`` must be an unguessable value tied to the user session (CSRF protection), not a
+        predictable id such as the user id.
+        """
+        host = AUTH_HOSTS.get(site_id)
+        if host is None:
+            raise ValueError(
+                f"Unknown site_id {site_id!r}; expected one of {sorted(AUTH_HOSTS)}"
+            )
+        if not isinstance(state, str) or not state.strip():
+            raise ValueError("state is required and must be a non-empty string")
+
+        params = {
+            "response_type": "code",
+            "client_id": self.client_id,
+            "redirect_uri": redirect_uri,
+            "state": state,
+        }
+        if code_challenge:
+            params["code_challenge"] = code_challenge
+            params["code_challenge_method"] = "S256"
+
+        return f"https://{host}/authorization?{urlencode(params)}"
+
+    def exchange_code(
+        self, code: str, redirect_uri: str, code_verifier: str | None = None
+    ) -> dict:
+        """Exchange an authorization code for the first token of the user."""
+        url = f"{self.api_url}/oauth/token"
+        payload = {
+            "grant_type": "authorization_code",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "code": code,
+            "redirect_uri": redirect_uri,
+        }
+        if code_verifier is not None:
+            payload["code_verifier"] = code_verifier
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+
+        with self._refresh_lock, self.token_storage.lock():
+            try:
+                response = self._send(
+                    "POST", url, data=payload, headers=headers, timeout=self.timeout
+                )
+            except requests.RequestException as e:
+                raise MeliConnectionError(
+                    f"Error de conexión al intercambiar el código de autorización: {e}"
+                ) from e
+
+            if response.status_code >= 400:
+                error_data = {}
+                try:
+                    error_data = response.json()
+                except ValueError:
+                    pass
+
+                message = (
+                    error_data.get("message") or error_data.get("error") or response.text
+                )
+                raise MeliAPIError(
+                    message=f"API Error: {message}",
+                    status_code=response.status_code,
+                    error_code=error_data.get("error"),
+                    response_text=response.text,
+                )
+
+            return self._store_token_response(response.json())
 
     def close(self) -> None:
         """Close the underlying session when this client owns it."""

@@ -195,6 +195,46 @@ client = MeliClient(
 Además, si una petición responde `401`, el cliente renueva el token una vez y reintenta la petición
 con el nuevo token. Un segundo `401` se reporta como error.
 
+### Autorización (OAuth)
+
+Para obtener el primer token de un usuario, genera un `state` impredecible y redirige al usuario a la
+URL de autorización. El `redirect_uri` debe ser exactamente el registrado en la aplicación de
+Mercado Libre, y el `state` debe validarse en el callback (protección CSRF):
+
+```python
+import secrets
+from meli_sdk import FileTokenStorage, MeliClient
+
+storage = FileTokenStorage("tokens/cuenta_1.json")
+client = MeliClient(
+    client_id="TU_CLIENT_ID",
+    client_secret="TU_CLIENT_SECRET",
+    token_storage=storage,
+)
+
+state = secrets.token_urlsafe(32)
+url = client.get_authorization_url(
+    "https://tu-app.example.com/callback",
+    state=state,
+    site_id="MCO",
+)
+# Redirige al usuario a `url`.
+
+# En el callback:
+# if request.args["state"] != state: abort(400)
+token = client.exchange_code(
+    request.args["code"],
+    "https://tu-app.example.com/callback",
+)
+```
+
+`get_authorization_url` también acepta `code_challenge` y agrega automáticamente
+`code_challenge_method=S256` si usas PKCE. `exchange_code` funciona incluso con un almacenamiento
+vacío y guarda el token igual que la renovación.
+
+Si quieres identificarte ante Mercado Libre, pasa `user_agent="TuApp/1.0"`: el SDK lo antepone al
+valor por defecto `meli-sdk/<versión> python-requests/<versión>`.
+
 ---
 
 ## Persistencia en Bases de Datos (Estrategia `CallbackTokenStorage`)

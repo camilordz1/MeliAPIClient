@@ -19,6 +19,11 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
 - Reintento automático una vez cuando una petición responde `401`, renovando el token antes.
 - `TokenStorage.lock()` para serializar las renovaciones, y `lock_callback` en
   `CallbackTokenStorage` para usar un lock de base de datos.
+- `get_authorization_url(...)` para iniciar el flujo `authorization_code`, con soporte opcional de
+  PKCE (`code_challenge`).
+- `exchange_code(...)` para canjear el código de autorización y guardar el primer token.
+- `User-Agent` identificable (`meli-sdk/<versión> python-requests/<versión>`), personalizable con
+  `user_agent=` y sobrescribible por llamada.
 
 ### Corregido
 - La carrera entre renovaciones concurrentes ya no invalida la sesión: el refresh token se canjea

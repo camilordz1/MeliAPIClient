@@ -69,6 +69,9 @@ def minimal_payload(item: dict, user_product_seller: bool) -> dict:
         "price": item.get("price"),
         "currency_id": item.get("currency_id"),
         "listing_type_id": item.get("listing_type_id"),
+        "available_quantity": max(item.get("available_quantity") or 1, 1),
+        "buying_mode": item.get("buying_mode") or "buy_it_now",
+        "condition": item.get("condition") or "new",
         "attributes": item.get("attributes") or [],
     }
     pictures = item.get("pictures") or []
@@ -141,6 +144,10 @@ def main() -> int:
                 f"      valid={result.valid} errors={len(result.errors)} "
                 f"warnings={warning_codes}"
             )
+            for cause in result.errors:
+                print(f"      error {cause.code}: {cause.message}")
+            if not result.valid:
+                raise AssertionError("payload rebuilt from the test listing is not valid")
             return result
 
         check("items.validate", validate)
@@ -155,7 +162,7 @@ def main() -> int:
 
             return run
 
-        check("items.set_description #1 (POST fallback)", roundtrip("1", "Descripcion de prueba 1"))
+        check("items.set_description #1 (first write)", roundtrip("1", "Descripcion de prueba 1"))
         check(
             "items.set_description #2 (PUT update)",
             roundtrip("2", "Descripcion de prueba 2"),

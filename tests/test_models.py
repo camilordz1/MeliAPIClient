@@ -11,11 +11,13 @@ from meli_sdk.models import (
     ShipmentCosts,
     ShipmentInfo,
     ShippingQuote,
+    ValidationResult,
     parse_billing_info,
     parse_listing_price,
     parse_shipment,
     parse_shipment_costs,
     parse_shipping_quote,
+    parse_validation_result,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -319,3 +321,78 @@ def test_parse_shipment_costs_without_senders():
     assert costs.seller_cost == Decimal("0")
     assert costs.seller_was_charged is False
     assert costs.buyer_paid_shipping is True
+
+
+def test_parse_validation_result_204_is_valid():
+    """A 204 with no body is valid and has no causes."""
+    result = parse_validation_result(204, None)
+
+    assert isinstance(result, ValidationResult)
+    assert result.valid is True
+    assert result.errors == ()
+    assert result.warnings == ()
+
+
+def test_parse_validation_result_warnings_only_is_valid():
+    """A 400 with only warnings means the listing is valid."""
+    result = parse_validation_result(400, load("validation_warnings_only.json"))
+
+    assert result.valid is True
+    assert result.errors == ()
+    assert len(result.warnings) == 2
+    assert result.warnings[0].code == "shipping.lost_me1_by_user"
+    assert result.warnings[1].code == "item.shipping.mandatory_free_shipping"
+
+
+def test_parse_validation_result_with_error_is_invalid():
+    """Errors and warnings are split, and any error makes it invalid."""
+    result = parse_validation_result(400, load("validation_with_error.json"))
+
+    assert result.valid is False
+    assert len(result.errors) == 1
+    assert len(result.warnings) == 1
+    assert result.errors[0].code == "item.attribute.invalid"
+    assert result.errors[0].references == ("attributes",)
+
+
+def test_parse_validation_result_invalid_fields_shape():
+    """The cause-less body.invalid_fields shape yields one synthesized error."""
+    result = parse_validation_result(400, load("validation_invalid_fields.json"))
+
+    assert result.valid is False
+    assert len(result.errors) == 1
+    error = result.errors[0]
+    assert error.type == "error"
+    assert error.code == "body.invalid_fields"
+    assert error.message == "The fields [title] are invalid for requested call."
+
+
+def test_parse_validation_result_unknown_type_counts_as_error():
+    """A cause with an unknown type fails closed."""
+    payload = {
+        "cause": [
+            {
+                "department": "items",
+                "cause_id": 3001,
+                "type": "info",
+                "code": "something.new",
+                "references": [],
+                "message": "Unknown severity",
+            }
+        ]
+    }
+
+    result = parse_validation_result(400, payload)
+
+    assert result.valid is False
+    assert len(result.errors) == 1
+
+
+@pytest.mark.parametrize("payload", [None, {}, {"cause": []}])
+def test_parse_validation_result_empty_400_is_invalid(payload):
+    """A 400 without causes fails closed with a synthesized error."""
+    result = parse_validation_result(400, payload)
+
+    assert result.valid is False
+    assert len(result.errors) == 1
+    assert result.errors[0].code == "validation.unknown"

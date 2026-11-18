@@ -1,0 +1,23 @@
+{
+  "message": "validation_error",
+  "error": "validation_error",
+  "status": 400,
+  "cause": [
+    {
+      "department": "shipping",
+      "cause_id": 1001,
+      "type": "warning",
+      "code": "shipping.lost_me1_by_user",
+      "references": [],
+      "message": "Shipping ME1 configuration notice"
+    },
+    {
+      "department": "shipping",
+      "cause_id": 1002,
+      "type": "warning",
+      "code": "item.shipping.mandatory_free_shipping",
+      "references": ["item"],
+      "message": "Free shipping is mandatory"
+    }
+  ]
+}

@@ -21,6 +21,14 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   publicación y venta.
 - `shipments.get_free_shipping_quote` (por `item_id` o por dimensiones y peso) y
   `shipments.get_costs` para conciliar lo que pagó el comprador y lo que se cobró al vendedor.
+- Modelos `ValidationCause` y `ValidationResult`, con el parser `parse_validation_result`, y
+  `items.validate` para validar una publicación sin crearla (las advertencias no bloquean).
+- `items.is_user_product_seller`, `seller_package_attributes` y las descripciones
+  (`get_description`, `set_description` y su alias `update_description`).
+
+### Cambiado
+- `items.create` rechaza antes de cualquier petición un payload con `title` y `family_name` a la
+  vez, combinación que la API rechaza para vendedores de user products.
 
 ### Obsoleto
 - `bills.get_billing_info`: el endpoint upstream `/orders/{id}/billing_info` está obsoleto; usa

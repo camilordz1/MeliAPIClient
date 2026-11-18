@@ -1,7 +1,34 @@
+import json
 from typing import List, Union
 
 from .exceptions import MeliAPIError
-from .models import ListingPrice, _format_price, parse_listing_price
+from .models import (
+    ListingPrice,
+    ValidationResult,
+    _format_price,
+    parse_listing_price,
+    parse_validation_result,
+)
+
+
+def seller_package_attributes(
+    height_cm: int, width_cm: int, length_cm: int, weight_g: int
+) -> list:
+    """Return the SELLER_PACKAGE_* attributes for user-products sellers."""
+    values = (height_cm, width_cm, length_cm, weight_g)
+    for value in values:
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise ValueError(
+                "package dimensions and weight must be positive integers"
+            )
+
+    height, width, length, weight = values
+    return [
+        {"id": "SELLER_PACKAGE_HEIGHT", "value_name": f"{height} cm"},
+        {"id": "SELLER_PACKAGE_WIDTH", "value_name": f"{width} cm"},
+        {"id": "SELLER_PACKAGE_LENGTH", "value_name": f"{length} cm"},
+        {"id": "SELLER_PACKAGE_WEIGHT", "value_name": f"{weight} g"},
+    ]
 
 
 class Items:
@@ -13,11 +40,61 @@ class Items:
 
     def create(self, data: dict) -> dict:
         """Crea/publica un nuevo producto en Mercado Libre."""
+        if isinstance(data, dict) and "title" in data and "family_name" in data:
+            raise ValueError("title and family_name cannot be sent together")
         return self.client.request("POST", "/items", json=data)
+
+    def validate(self, data: dict) -> ValidationResult:
+        """Validate a listing payload without creating it."""
+        try:
+            self.client.request("POST", "/items/validate", json=data)
+        except MeliAPIError as exc:
+            if exc.status_code != 400:
+                raise
+            try:
+                payload = json.loads(exc.response_text)
+            except (TypeError, ValueError):
+                raise
+            return parse_validation_result(400, payload)
+        return parse_validation_result(204, None)
+
+    def is_user_product_seller(self, user_id: int = None) -> bool:
+        """Return True when the seller has the user_product_seller tag."""
+        path = f"/users/{user_id}" if user_id is not None else "/users/me"
+        user = self.client.request("GET", path)
+        tags = user.get("tags") if isinstance(user, dict) else None
+        return isinstance(tags, list) and "user_product_seller" in tags
 
     def get(self, item_id: str) -> dict:
         """Obtiene la información de un producto por su ID."""
         return self.client.request("GET", f"/items/{item_id}")
+
+    def get_description(self, item_id: str) -> dict:
+        """Return the raw description payload of an item."""
+        return self.client.request("GET", f"/items/{item_id}/description")
+
+    def set_description(self, item_id: str, plain_text: str) -> dict:
+        """Set or update the plain-text description of an item."""
+        if not isinstance(plain_text, str) or not plain_text.strip():
+            raise ValueError("plain_text must be a non-empty string")
+
+        body = {"plain_text": plain_text}
+        try:
+            return self.client.request(
+                "PUT",
+                f"/items/{item_id}/description",
+                params={"api_version": 2},
+                json=body,
+            )
+        except MeliAPIError as exc:
+            if exc.status_code != 404:
+                raise
+
+        return self.client.request("POST", f"/items/{item_id}/description", json=body)
+
+    def update_description(self, item_id: str, plain_text: str) -> dict:
+        """Alias of set_description."""
+        return self.set_description(item_id, plain_text)
 
     def update(self, item_id: str, data: dict) -> dict:
         """Actualiza atributos específicos de un producto."""

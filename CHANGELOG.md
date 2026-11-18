@@ -26,6 +26,9 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   `user_agent=` y sobrescribible por llamada.
 - `bills.upload_fiscal_document` acepta `bytes`, `bytearray` o un objeto de archivo binario, además
   de rutas, y un `filename=` explícito.
+- `orders.iter_all(...)`: generador que recorre todas las páginas de órdenes y acepta `status`,
+  `sort`, `utc_offset`, `page_size` y `extra_params`.
+- `orders.search` acepta `status`, `sort` (`date_asc`/`date_desc`), `utc_offset` y `extra_params`.
 
 ### Corregido
 - La carrera entre renovaciones concurrentes ya no invalida la sesión: el refresh token se canjea

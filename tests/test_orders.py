@@ -1,5 +1,6 @@
 import json
 import time
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 import responses
@@ -178,3 +179,77 @@ def test_legacy_order_list_uses_colombia_offset(mocked, tmp_path):
     )
 
     assert Order(session).list(year=2026, month=2) == {"results": []}
+
+
+def query_params(call) -> dict:
+    """Return the query string of a mocked request as a flat dict."""
+    parsed = urlsplit(call.request.url)
+    return {key: values[0] for key, values in parse_qs(parsed.query).items()}
+
+
+def page(ids, total):
+    """Build a search page body."""
+    return {"results": [{"id": order_id} for order_id in ids], "paging": {"total": total}}
+
+
+def test_iter_all_walks_all_pages(client, mocked):
+    """iter_all follows offset, offset+n... until paging.total is reached."""
+    first = list(range(1, 51))
+    second = list(range(51, 101))
+    third = list(range(101, 121))
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page(first, 120))
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page(second, 120))
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page(third, 120))
+
+    orders = list(client.orders.iter_all(year=2026, month=2))
+
+    assert [order["id"] for order in orders] == list(range(1, 121))
+    assert len(mocked.calls) == 3
+    assert [query_params(call)["offset"] for call in mocked.calls] == ["0", "50", "100"]
+
+
+def test_iter_all_stops_on_empty_results(client, mocked):
+    """An empty page stops the generator."""
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page(range(1, 51), 120))
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page([], 120))
+
+    orders = list(client.orders.iter_all(year=2026, month=2))
+
+    assert len(orders) == 50
+    assert len(mocked.calls) == 2
+
+
+def test_iter_all_is_lazy(client, mocked):
+    """Taking the first item fetches only the first page."""
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page(range(1, 51), 120))
+
+    iterator = client.orders.iter_all(year=2026, month=2)
+    first = next(iterator)
+
+    assert first["id"] == 1
+    assert len(mocked.calls) == 1
+
+
+def test_iter_all_passes_filters(client, mocked):
+    """The filters are sent on every page."""
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page([1], 2))
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page([2], 2))
+
+    orders = list(
+        client.orders.iter_all(year=2026, month=2, status="paid", sort="date_desc")
+    )
+
+    assert [order["id"] for order in orders] == [1, 2]
+    for call in mocked.calls:
+        params = query_params(call)
+        assert params["order.status"] == "paid"
+        assert params["sort"] == "date_desc"
+        assert params["order.date_created.from"] == "2026-02-01T00:00:00.000-05:00"
+        assert params["order.date_created.to"] == "2026-02-28T23:59:59.000-05:00"
+
+
+@pytest.mark.parametrize("page_size", [0, 51, True])
+def test_iter_all_rejects_invalid_page_size(client, mocked, page_size):
+    """page_size must be an int between 1 and 50, checked on the first next()."""
+    with pytest.raises(ValueError):
+        next(client.orders.iter_all(year=2026, month=2, page_size=page_size))

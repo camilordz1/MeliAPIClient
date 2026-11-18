@@ -307,6 +307,8 @@ python -m pytest
 *   `orders.get(order_id)`: Obtiene el detalle de una orden.
 *   `orders.search(seller_id=None, year=None, month=None, *, status=None, sort="date_asc",
     utc_offset="-05:00", extra_params=None)`: Busca órdenes de un periodo de tiempo.
+*   `orders.iter_all(seller_id=None, year=None, month=None, *, status=None, sort="date_asc",
+    utc_offset="-05:00", page_size=50, extra_params=None)`: Generador que recorre todas las páginas.
 *   `orders.get_pack(pack_id)`: Obtiene información de un paquete de envíos.
 
 El rango de fechas se calcula en la zona horaria del vendedor. Colombia (`MCO`) usa `-05:00` sin
@@ -318,6 +320,15 @@ client.orders.search(year=2026, month=2, status="paid")
 
 # Mismo rango en UTC, ordenado de más reciente a más antiguo
 client.orders.search(year=2026, month=2, sort="date_desc", utc_offset="+00:00")
+```
+
+`orders.iter_all` recorre todas las páginas y respeta el máximo de 50 órdenes por página. La
+validación de `page_size` ocurre al consumir el generador, así que puedes encadenarlo con `break`
+sin descargar el resto:
+
+```python
+for order in client.orders.iter_all(year=2026, month=11, status="paid"):
+    print(order["id"])
 ```
 
 ### 2. Facturas (`client.bills`)

@@ -117,6 +117,60 @@ class Orders:
 
         return self.client.request("GET", "/orders/search", params=params)
 
+    def iter_all(
+        self,
+        seller_id: int = None,
+        year: int = None,
+        month: int = None,
+        *,
+        status: str = None,
+        sort: str = "date_asc",
+        utc_offset: str = DEFAULT_UTC_OFFSET,
+        page_size: int = 50,
+        extra_params: dict = None,
+    ):
+        """Yield every order of the period, following the search pagination.
+
+        ``page_size`` must be an int between 1 and 50; it is validated on the first ``next()``,
+        because this is a generator.
+        """
+        if (
+            isinstance(page_size, bool)
+            or not isinstance(page_size, int)
+            or not 1 <= page_size <= 50
+        ):
+            raise ValueError("page_size must be an int between 1 and 50")
+
+        offset = 0
+        while True:
+            page = self.search(
+                seller_id=seller_id,
+                offset=offset,
+                limit=page_size,
+                year=year,
+                month=month,
+                status=status,
+                sort=sort,
+                utc_offset=utc_offset,
+                extra_params=extra_params,
+            )
+            results = page.get("results") or []
+            paging = page.get("paging")
+
+            for order in results:
+                yield order
+
+            if not results:
+                return
+
+            offset += len(results)
+            if paging is not None:
+                total = paging.get("total")
+                if total is not None and offset >= total:
+                    return
+            elif len(results) < page_size:
+                return
+
     def get(self, order_id: Union[int, str]) -> dict:
         """Obtiene información de una orden específica."""
         return self.client.request("GET", f"/orders/{order_id}")

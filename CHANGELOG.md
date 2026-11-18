@@ -5,9 +5,18 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
 [versionado semántico](https://semver.org/lang/es/). Mientras el SDK esté en versión alfa
 (`1.0.0aN`), una versión nueva puede traer cambios incompatibles.
 
-## [Sin publicar]
+## [1.0.0a1] - 2026-11-17
 
 ### Añadido
+- Arnés de pruebas con pytest y `responses`, con pruebas de caracterización para transporte,
+  tokens, facturas, órdenes y publicaciones. Los errores conocidos quedan registrados como
+  `xfail(strict=True)` hasta que se corrijan.
+- Distribución de compatibilidad `MeliAPIClient` 0.1.0, que reexporta `meli_sdk`, conserva los
+  imports antiguos de submodules y emite un `FutureWarning`.
+- Integración continua con GitHub Actions: ruff, pytest en Python 3.10 y 3.13, construcción del
+  wheel y smoke tests del paquete y del shim.
+- `pyproject.toml` con metadatos PEP 621, layout `src/`, marcador `py.typed` y extra `dev`.
+- Configuración de ruff y licencia SPDX (`license = "MIT"`).
 - `MeliClient` acepta `timeout=` (un número o una tupla `(conexión, lectura)`) y `session=` para
   inyectar una `requests.Session` compartida; un `timeout` por llamada sobrescribe el valor del
   cliente.
@@ -33,8 +42,27 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   `scroll_id` (válido 5 minutos) y evita el límite de 1000 resultados del paginado por offset.
 - `items.get_many(...)`: multiget de publicaciones en lotes de 20, con `attributes=` opcional y
   `include_errors=` para conservar las entradas fallidas.
+- `examples/live_smoke.py`: prueba de humo de solo lectura contra una cuenta real, que nunca
+  renueva ni guarda el token.
+
+### Cambiado
+- El paquete se renombra de `MeliAPIClient` a `meli-sdk` y el nombre de importación pasa a ser
+  `meli_sdk`.
+- El ejemplo de uso se mueve a `examples/basic_usage.py`.
+
+### Cambios incompatibles
+- `from MeliAPIClient import ...` deja de funcionar; hay que usar `from meli_sdk import ...`.
+  La distribución `MeliAPIClient` 0.1.0 solo existe para señalar el cambio, no para mantener la
+  API anterior.
+- El offset por defecto de las búsquedas de órdenes cambia de `-00:00` a `-05:00`, así que los
+  resultados en los bordes de mes (31 de enero por la noche y 1 de marzo de madrugada) cambian.
+  Usa `utc_offset=` para restaurar otro rango.
+- El segundo parámetro de `upload_fiscal_document` se renombra de `file_path` a `document`. Las
+  llamadas posicionales siguen funcionando; las que usan `file_path=` deben actualizarse.
 
 ### Corregido
+- El SDK ya no carga el archivo `.env` del directorio actual al importarse. Solo la `Session`
+  clásica lo lee, de forma perezosa, cuando faltan las claves o el token.
 - La carrera entre renovaciones concurrentes ya no invalida la sesión: el refresh token se canjea
   una sola vez y los hilos que esperan reutilizan el token nuevo.
 - Las peticiones y la renovación del token usan una `requests.Session` persistente y un timeout
@@ -46,37 +74,3 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
 - `upload_fiscal_document` envía el documento con `Content-Type: application/pdf`, que Mercado Libre
   exige para aceptar la factura.
 - `has_fiscal_document` ya no devuelve `True` cuando `fiscal_documents` está vacío.
-
-### Cambios incompatibles
-- El offset por defecto de las búsquedas de órdenes cambia de `-00:00` a `-05:00`, así que los
-  resultados en los bordes de mes (31 de enero por la noche y 1 de marzo de madrugada) cambian.
-  Usa `utc_offset=` para restaurar otro rango.
-- El segundo parámetro de `upload_fiscal_document` se renombra de `file_path` a `document`. Las
-  llamadas posicionales siguen funcionando; las que usan `file_path=` deben actualizarse.
-
-## [1.0.0a1] - sin publicar
-
-### Añadido
-- Arnés de pruebas con pytest y `responses`, con pruebas de caracterización para transporte,
-  tokens, facturas, órdenes y publicaciones. Los errores conocidos quedan registrados como
-  `xfail(strict=True)` hasta que se corrijan.
-- Distribución de compatibilidad `MeliAPIClient` 0.1.0, que reexporta `meli_sdk`, conserva los
-  imports antiguos de submodules y emite un `FutureWarning`.
-- Integración continua con GitHub Actions: ruff, pytest en Python 3.10 y 3.13, construcción del
-  wheel y smoke tests del paquete y del shim.
-- `pyproject.toml` con metadatos PEP 621, layout `src/`, marcador `py.typed` y extra `dev`.
-- Configuración de ruff y licencia SPDX (`license = "MIT"`).
-
-### Cambiado
-- El paquete se renombra de `MeliAPIClient` a `meli-sdk` y el nombre de importación pasa a ser
-  `meli_sdk`.
-- El ejemplo de uso se mueve a `examples/basic_usage.py`.
-
-### Cambios incompatibles
-- `from MeliAPIClient import ...` deja de funcionar; hay que usar `from meli_sdk import ...`.
-  La distribución `MeliAPIClient` 0.1.0 solo existe para señalar el cambio, no para mantener la
-  API anterior.
-
-### Corregido
-- El SDK ya no carga el archivo `.env` del directorio actual al importarse. Solo la `Session`
-  clásica lo lee, de forma perezosa, cuando faltan las claves o el token.

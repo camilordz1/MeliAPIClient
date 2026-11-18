@@ -1,7 +1,12 @@
+import io
+import os
 from typing import Union
 
 from .actions import Actions
 from .exceptions import MeliAPIError
+
+DEFAULT_FILENAME = "factura.pdf"
+PDF_MAGIC = b"%PDF-"
 
 
 class Bills:
@@ -19,17 +24,86 @@ class Bills:
         """Comprueba si un paquete de órdenes tiene un documento fiscal adjunto."""
         try:
             response = self.client.request("GET", f"/packs/{pack_id}/fiscal_documents")
-            return bool(response)
         except MeliAPIError as e:
             if e.status_code == 404:
                 return False
-            raise e
+            raise
 
-    def upload_fiscal_document(self, pack_id: Union[int, str], file_path: str) -> dict:
-        """Sube un documento fiscal (factura) en formato PDF para un paquete."""
-        with open(file_path, "rb") as f:
-            files = {"fiscal_document": f}
-            return self.client.request("POST", f"/packs/{pack_id}/fiscal_documents", files=files)
+        documents = response.get("fiscal_documents") if isinstance(response, dict) else None
+        return isinstance(documents, list) and bool(documents)
+
+    def upload_fiscal_document(
+        self,
+        pack_id: Union[int, str],
+        document,
+        *,
+        filename: str = None,
+    ) -> dict:
+        """Sube un documento fiscal (factura PDF) para un paquete.
+
+        ``document`` puede ser una ruta, ``bytes``/``bytearray`` o un objeto de archivo binario.
+        """
+        filename, fileobj, owns_file = self._prepare_fiscal_document(document, filename)
+        try:
+            files = {"fiscal_document": (filename, fileobj, "application/pdf")}
+            return self.client.request(
+                "POST", f"/packs/{pack_id}/fiscal_documents", files=files
+            )
+        finally:
+            if owns_file:
+                fileobj.close()
+
+    def _prepare_fiscal_document(self, document, filename):
+        """Return (filename, file object, owns_file) after validating the PDF."""
+        if isinstance(document, (str, os.PathLike)):
+            fileobj = open(document, "rb")
+            try:
+                self._check_pdf(fileobj)
+            except Exception:
+                fileobj.close()
+                raise
+            default_name = os.path.basename(os.fspath(document))
+            return filename or default_name, fileobj, True
+
+        if isinstance(document, (bytes, bytearray)):
+            if not document:
+                raise ValueError("fiscal document is empty")
+            if bytes(document[:5]) != PDF_MAGIC:
+                raise ValueError("fiscal document must be a PDF")
+            return filename or DEFAULT_FILENAME, io.BytesIO(bytes(document)), True
+
+        if hasattr(document, "read"):
+            self._check_pdf_file_object(document)
+            name = getattr(document, "name", "")
+            default_name = os.path.basename(name) if isinstance(name, str) and name else ""
+            return filename or default_name or DEFAULT_FILENAME, document, False
+
+        raise TypeError("document must be a path, bytes or a binary file object")
+
+    @staticmethod
+    def _check_pdf(fileobj) -> None:
+        """Validate the PDF signature of a seekable file and rewind it."""
+        header = fileobj.read(5)
+        if not header:
+            raise ValueError("fiscal document is empty")
+        if header != PDF_MAGIC:
+            raise ValueError("fiscal document must be a PDF")
+        fileobj.seek(0)
+
+    @staticmethod
+    def _check_pdf_file_object(document) -> None:
+        """Validate the PDF signature of a caller file object when it is seekable."""
+        seek = getattr(document, "seek", None)
+        seekable = getattr(document, "seekable", None)
+        if seek is None or (callable(seekable) and not seekable()):
+            return
+
+        header = document.read(5)
+        document.seek(0)
+        if not header:
+            raise ValueError("fiscal document is empty")
+        if header != PDF_MAGIC:
+            raise ValueError("fiscal document must be a PDF")
 
 
 # --- Capa de Compatibilidad Clásica (Legacy) ---

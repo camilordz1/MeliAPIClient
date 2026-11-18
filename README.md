@@ -310,8 +310,22 @@ python -m pytest
 
 ### 2. Facturas (`client.bills`)
 *   `bills.get_billing_info(order_id)`: Detalles de facturación del cliente.
-*   `bills.has_fiscal_document(pack_id)`: Verifica si el paquete tiene factura adjunta.
-*   `bills.upload_fiscal_document(pack_id, file_path)`: Sube una factura en formato PDF.
+*   `bills.has_fiscal_document(pack_id)`: Verifica si el paquete tiene una factura adjunta; una
+    lista vacía se considera sin factura.
+*   `bills.upload_fiscal_document(pack_id, document, *, filename=None)`: Sube una factura. Solo se
+    aceptan archivos PDF.
+
+```python
+# Desde una ruta
+client.bills.upload_fiscal_document(4028374928, "facturas/factura-123.pdf")
+
+# Desde bytes, sin escribir un archivo temporal
+with open("facturas/factura-123.pdf", "rb") as f:
+    pdf_bytes = f.read()
+client.bills.upload_fiscal_document(4028374928, pdf_bytes, filename="factura-123.pdf")
+```
+
+El documento debe empezar por `%PDF-`; también se acepta un objeto de archivo binario.
 
 ### 3. Envíos (`client.shipments`)
 *   `shipments.get(shipment_id)`: Obtiene toda la información de tracking de un envío.

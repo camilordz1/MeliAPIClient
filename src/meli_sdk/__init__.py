@@ -17,11 +17,14 @@ from .models import (
     ShipmentCosts,
     ShipmentInfo,
     ShippingQuote,
+    ValidationCause,
+    ValidationResult,
     parse_billing_info,
     parse_listing_price,
     parse_shipment,
     parse_shipment_costs,
     parse_shipping_quote,
+    parse_validation_result,
 )
 from .orders import Order, Orders
 from .session import Session
@@ -64,4 +67,7 @@ __all__ = [
     "parse_listing_price",
     "parse_shipping_quote",
     "parse_shipment_costs",
+    "ValidationCause",
+    "ValidationResult",
+    "parse_validation_result",
 ]

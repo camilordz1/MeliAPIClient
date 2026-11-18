@@ -1,0 +1,23 @@
+{
+  "message": "validation_error",
+  "error": "validation_error",
+  "status": 400,
+  "cause": [
+    {
+      "department": "items",
+      "cause_id": 2001,
+      "type": "error",
+      "code": "item.attribute.invalid",
+      "references": ["attributes"],
+      "message": "Attribute value is invalid"
+    },
+    {
+      "department": "shipping",
+      "cause_id": 1002,
+      "type": "warning",
+      "code": "item.shipping.mandatory_free_shipping",
+      "references": ["item"],
+      "message": "Free shipping is mandatory"
+    }
+  ]
+}

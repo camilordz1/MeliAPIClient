@@ -78,6 +78,24 @@ class ShipmentCosts:
 
 
 @dataclass(frozen=True)
+class ValidationCause:
+    type: str | None
+    code: str | None
+    message: str | None
+    department: str | None
+    cause_id: int | None
+    references: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class ValidationResult:
+    valid: bool
+    errors: tuple[ValidationCause, ...]
+    warnings: tuple[ValidationCause, ...]
+    raw: dict = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
 class ShipmentInfo:
     id: int | None
     status: str | None
@@ -402,3 +420,58 @@ def _format_price(value) -> str:
     if value <= 0:
         raise ValueError(f"price must be a positive number, got {value!r}")
     return str(value)
+
+
+def _parse_validation_cause(entry) -> ValidationCause | None:
+    """Parse one validation cause entry."""
+    data = _as_dict(entry)
+    references = data.get("references") or []
+    if not isinstance(references, (list, tuple)):
+        references = [references]
+
+    cause = ValidationCause(
+        type=_clean(data.get("type")),
+        code=_clean(data.get("code")),
+        message=_clean(data.get("message")),
+        department=_clean(data.get("department")),
+        cause_id=data.get("cause_id"),
+        references=tuple(str(reference) for reference in references),
+    )
+    return cause
+
+
+def parse_validation_result(status_code: int, payload: dict | None) -> ValidationResult:
+    """Parse the response of POST /items/validate.
+
+    Warnings do not block the listing; unknown cause types count as errors.
+    """
+    data = _as_dict(payload)
+
+    if status_code < 400:
+        return ValidationResult(valid=True, errors=(), warnings=(), raw=data)
+
+    causes = [
+        cause
+        for cause in (_parse_validation_cause(entry) for entry in data.get("cause") or [])
+        if cause is not None
+    ]
+    errors = tuple(cause for cause in causes if cause.type != "warning")
+    warnings = tuple(cause for cause in causes if cause.type == "warning")
+
+    if not causes:
+        message = _clean(data.get("message"))
+        error = _clean(data.get("error"))
+        if message or error:
+            synthesized = ValidationCause(
+                type="error",
+                code=message,
+                message=error,
+                department=None,
+                cause_id=None,
+                references=(),
+            )
+            return ValidationResult(
+                valid=False, errors=(synthesized,), warnings=(), raw=data
+            )
+
+    return ValidationResult(valid=not errors, errors=errors, warnings=warnings, raw=data)

@@ -136,9 +136,6 @@ def test_refresh_http_error_raises_token_expired(client, storage, mocked):
             client.request("GET", "/users/me")
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Known bug: refresh has no timeout; fixed in F1-01"
-)
 def test_refresh_sets_a_timeout(client, storage, mocked):
     """The refresh request must carry a timeout."""
     with freeze_time(FROZEN_NOW):

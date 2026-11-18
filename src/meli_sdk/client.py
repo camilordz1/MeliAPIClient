@@ -1,9 +1,39 @@
+import math
 import time
 
 import requests
 
 from .exceptions import MeliAPIError, MeliConnectionError, MeliTokenExpiredError
 from .storage import TokenStorage
+
+
+def _validate_timeout(timeout):
+    """Return a validated timeout, raising ValueError when it is not usable."""
+    message = (
+        "timeout must be a positive int/float or a (connect, read) tuple of "
+        f"positive numbers, got {timeout!r}"
+    )
+
+    if isinstance(timeout, bool):
+        raise ValueError(message)
+
+    if isinstance(timeout, (int, float)):
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError(message)
+        return timeout
+
+    if isinstance(timeout, tuple) and len(timeout) == 2:
+        for value in timeout:
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value <= 0
+            ):
+                raise ValueError(message)
+        return timeout
+
+    raise ValueError(message)
 
 
 class MeliClient:
@@ -16,12 +46,19 @@ class MeliClient:
         token_storage: TokenStorage,
         api_url: str = "https://api.mercadolibre.com",
         token_buffer_seconds: int = 300,
+        *,
+        timeout: float | tuple[float, float] = 30.0,
+        session: requests.Session | None = None,
     ) -> None:
         self.client_id = client_id
         self.client_secret = client_secret
         self.token_storage = token_storage
         self.api_url = api_url.rstrip("/")
         self.token_buffer_seconds = token_buffer_seconds
+        self.timeout = _validate_timeout(timeout)
+        self.session = session if session is not None else requests.Session()
+        self._owns_session = session is None
+        self._closed = False
 
         # Recursos (Lazy imports or direct instantiations to avoid circular dependencies)
         from .bills import Bills
@@ -55,8 +92,12 @@ class MeliClient:
             "format-new": "true",
         })
 
+        timeout = kwargs.pop("timeout", self.timeout)
+
         try:
-            response = requests.request(method, url, headers=headers, **kwargs)
+            response = self.session.request(
+                method, url, headers=headers, timeout=timeout, **kwargs
+            )
         except requests.RequestException as e:
             raise MeliConnectionError(f"Error de conexión con la API de Mercado Libre: {e}") from e
 
@@ -143,7 +184,9 @@ class MeliClient:
         }
 
         try:
-            response = requests.post(url, data=payload, headers=headers)
+            response = self.session.post(
+                url, data=payload, headers=headers, timeout=self.timeout
+            )
         except requests.RequestException as e:
             raise MeliConnectionError(f"Error al conectar para renovar el token: {e}") from e
 
@@ -168,3 +211,15 @@ class MeliClient:
         self.token_storage.save_token(token_response)
 
         return token_response
+
+    def close(self) -> None:
+        """Close the underlying session when this client owns it."""
+        if self._owns_session and not self._closed:
+            self.session.close()
+            self._closed = True
+
+    def __enter__(self) -> "MeliClient":
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        self.close()

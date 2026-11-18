@@ -124,9 +124,6 @@ def test_connection_error_raises_meli_connection_error(client, mocked):
         client.request("GET", "/users/me")
 
 
-@pytest.mark.xfail(
-    strict=True, reason="Known bug: no timeout; fixed in F1-01"
-)
 def test_request_sets_a_timeout(client, mocked):
     """Every HTTP request must carry a timeout."""
     mocked.add(responses.GET, f"{API_URL}/users/me", json={"id": 12345})

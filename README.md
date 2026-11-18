@@ -85,6 +85,47 @@ print(f"Producto: {producto['title']} | Precio: {producto['price']}")
 client.items.update_stock("MCO123456789", nuevo_stock=15)
 ```
 
+### Sesión persistente y timeout
+
+Cada `MeliClient` usa una `requests.Session` propia y aplica un timeout de 30 segundos a todas las
+peticiones y a la renovación del token. Puedes cambiar el timeout, compartir una sesión entre
+clientes o cerrarla automáticamente con un context manager:
+
+```python
+import requests
+from meli_sdk import FileTokenStorage, MeliClient
+
+storage = FileTokenStorage("tokens/cuenta_1.json")
+
+# Timeout propio: 5 s para conectar y 20 s para leer
+client = MeliClient(
+    client_id="TU_CLIENT_ID",
+    client_secret="TU_CLIENT_SECRET",
+    token_storage=storage,
+    timeout=(5, 20),
+)
+
+# Compartir una sesión (el cliente no la cierra)
+shared = requests.Session()
+client = MeliClient(
+    client_id="TU_CLIENT_ID",
+    client_secret="TU_CLIENT_SECRET",
+    token_storage=storage,
+    session=shared,
+)
+
+# Cerrar la sesión al terminar
+with MeliClient(
+    client_id="TU_CLIENT_ID",
+    client_secret="TU_CLIENT_SECRET",
+    token_storage=storage,
+    timeout=10,
+) as client:
+    client.items.get("MCO123456789")
+```
+
+El timeout también se puede sobrescribir por llamada con `client.request(..., timeout=5)`.
+
 ---
 
 ## Persistencia en Bases de Datos (Estrategia `CallbackTokenStorage`)

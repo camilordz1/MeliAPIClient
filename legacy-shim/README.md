@@ -1,11 +1,11 @@
 # MeliAPIClient (obsoleto)
 
-> **Este paquete ahora se llama [`meli-sdk`](https://pypi.org/project/meli-sdk/).**
+> **Este paquete ahora se llama [`meli-python-sdk`](https://pypi.org/project/meli-python-sdk/).**
 > `MeliAPIClient` ya no recibirá actualizaciones.
 
 ```bash
 pip uninstall MeliAPIClient
-pip install meli-sdk
+pip install meli-python-sdk
 ```
 
 ```python
@@ -16,7 +16,7 @@ from MeliAPIClient import MeliClient
 from meli_sdk import MeliClient
 ```
 
-La versión 0.1.0 de `MeliAPIClient` solo instala `meli-sdk`, reexporta sus nombres y emite un
+La versión 0.1.0 de `MeliAPIClient` solo instala `meli-python-sdk`, reexporta sus nombres y emite un
 `FutureWarning` al importarse. Consulta el
 [README de `meli-sdk`](https://github.com/camilordz1/meli-sdk#readme) para la guía de uso.
 

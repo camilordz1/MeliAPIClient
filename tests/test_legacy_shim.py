@@ -23,11 +23,11 @@ def _run(code: str, *python_args: str) -> subprocess.CompletedProcess:
 
 
 def test_shim_emits_future_warning():
-    """Importing the shim warns that the package was renamed to meli-sdk."""
+    """Importing the shim warns that the package was renamed to meli-python-sdk."""
     result = _run("import MeliAPIClient", "-W", "error::FutureWarning")
 
     assert result.returncode != 0
-    assert "meli-sdk" in result.stderr
+    assert "meli-python-sdk" in result.stderr
 
 
 def test_shim_reexports_public_api():

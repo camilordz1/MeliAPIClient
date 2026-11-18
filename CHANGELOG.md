@@ -46,8 +46,8 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   renueva ni guarda el token.
 
 ### Cambiado
-- El paquete se renombra de `MeliAPIClient` a `meli-sdk` y el nombre de importación pasa a ser
-  `meli_sdk`.
+- El paquete se renombra de `MeliAPIClient` a `meli-python-sdk` (el nombre `meli-sdk` no está
+  disponible en PyPI) y el nombre de importación pasa a ser `meli_sdk`.
 - El ejemplo de uso se mueve a `examples/basic_usage.py`.
 
 ### Cambios incompatibles

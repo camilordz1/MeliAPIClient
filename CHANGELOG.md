@@ -15,6 +15,12 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   falta el id o el nuevo responde 404.
 - `shipments.get_normalized(shipment_id)`: devuelve estado, seguimiento, costo como `Decimal` y la
   dirección de entrega.
+- Modelos `ListingPrice`, `ShippingQuote` y `ShipmentCosts`, con los parsers `parse_listing_price`,
+  `parse_shipping_quote` y `parse_shipment_costs`.
+- `items.get_listing_prices` y `items.get_listing_price` para consultar las comisiones de
+  publicación y venta.
+- `shipments.get_free_shipping_quote` (por `item_id` o por dimensiones y peso) y
+  `shipments.get_costs` para conciliar lo que pagó el comprador y lo que se cobró al vendedor.
 
 ### Obsoleto
 - `bills.get_billing_info`: el endpoint upstream `/orders/{id}/billing_info` está obsoleto; usa

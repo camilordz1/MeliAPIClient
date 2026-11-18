@@ -143,7 +143,10 @@ def main() -> int:
             sample = ids[:25]
 
             def multiget():
-                items = client.items.get_many(sample, attributes=["title", "price"])
+                items = client.items.get_many(
+                    sample,
+                    attributes=["title", "price", "category_id", "listing_type_id"],
+                )
                 returned = [item["id"] for item in items]
                 expected = [item_id for item_id in sample if item_id in set(returned)]
                 if returned != expected:
@@ -154,6 +157,49 @@ def main() -> int:
 
             items = check("items.get_many (2 batches, attributes)", multiget) or []
             print(f"      items returned={len(items)} of {len(sample)}")
+
+            if items and items[0].get("price"):
+                sample_item = items[0]
+
+                def listing_prices():
+                    prices = client.items.get_listing_prices(
+                        sample_item["price"],
+                        category_id=sample_item.get("category_id"),
+                    )
+                    if not prices:
+                        raise AssertionError("empty listing prices")
+                    return prices
+
+                prices = check("items.get_listing_prices", listing_prices)
+                print(f"      listing prices returned={len(prices or [])}")
+
+                if sample_item.get("listing_type_id"):
+
+                    def listing_price():
+                        value = client.items.get_listing_price(
+                            sample_item["price"],
+                            sample_item["listing_type_id"],
+                            category_id=sample_item.get("category_id"),
+                        )
+                        print(
+                            f"      percentage_fee={value.percentage_fee} "
+                            f"currency={value.currency_id}"
+                        )
+                        return value
+
+                    check("items.get_listing_price", listing_price)
+
+                def free_shipping_quote():
+                    quote = client.shipments.get_free_shipping_quote(
+                        item_id=sample_item["id"]
+                    )
+                    print(
+                        f"      billable_weight={quote.billable_weight} "
+                        f"currency={quote.currency_id}"
+                    )
+                    return quote
+
+                check("shipments.get_free_shipping_quote", free_shipping_quote)
 
     passed = sum(ok for _, ok in results)
     print(f"\n{passed}/{len(results)} checks passed")

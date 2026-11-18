@@ -5,6 +5,19 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
 [versionado semántico](https://semver.org/lang/es/). Mientras el SDK esté en versión alfa
 (`1.0.0aN`), una versión nueva puede traer cambios incompatibles.
 
+## [Sin publicar]
+
+### Añadido
+- `MeliClient` acepta `timeout=` (un número o una tupla `(conexión, lectura)`) y `session=` para
+  inyectar una `requests.Session` compartida; un `timeout` por llamada sobrescribe el valor del
+  cliente.
+- `MeliClient.close()` y el protocolo de context manager (`with MeliClient(...) as client:`) para
+  cerrar la sesión cuando el cliente es su dueño.
+
+### Corregido
+- Las peticiones y la renovación del token usan una `requests.Session` persistente y un timeout
+  por defecto de 30 segundos.
+
 ## [1.0.0a1] - sin publicar
 
 ### Añadido

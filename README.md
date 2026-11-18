@@ -360,6 +360,24 @@ El documento debe empezar por `%PDF-`; también se acepta un objeto de archivo b
 *   `items.update_price(item_id, nuevo_precio)`: Actualiza el precio del producto.
 *   `items.update_stock(item_id, nuevo_stock)`: Actualiza el stock disponible.
 *   `items.get_visits(item_id)`: Cantidad de visitas de una publicación.
+*   `items.iter_all(seller_id=None, *, page_size=100, extra_params=None)`: Generador que recorre los
+    IDs de todas las publicaciones con `search_type=scan`. El `scroll_id` caduca a los 5 minutos, así
+    que consúmelo sin pausas largas.
+*   `items.get_many(item_ids, *, attributes=None, include_errors=False)`: Descarga los detalles en
+    lotes de 20 IDs y conserva el orden de entrada.
+
+```python
+from itertools import islice
+
+# Primeras 100 publicaciones, para no mantener el scroll abierto demasiado tiempo
+ids = list(islice(client.items.iter_all(), 100))
+items = client.items.get_many(
+    ids, attributes=["id", "title", "price", "available_quantity"]
+)
+```
+
+`get_many` descarta por defecto las entradas con error; pasa `include_errors=True` para recibir
+también los `{"code", "body"}` fallidos.
 
 ### 5. Métricas e Inteligencia (`client.metrics`)
 *   `metrics.get_seller_info(seller_id=None)`: Datos públicos del vendedor.

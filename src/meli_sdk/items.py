@@ -1,5 +1,7 @@
 from typing import List, Union
 
+from .exceptions import MeliAPIError
+
 
 class Items:
     """Clase para interactuar con los recursos de Publicaciones de Productos (Items) de
@@ -105,6 +107,49 @@ class Items:
             scroll_id = page.get("scroll_id")
             if not results or not scroll_id:
                 return
+
+    def get_many(self, item_ids, *, attributes=None, include_errors: bool = False) -> list:
+        """Fetch several items through the multiget endpoint, in batches of 20."""
+        unique_ids = list(dict.fromkeys(item_ids))
+        if not unique_ids:
+            return []
+
+        results = []
+        for start in range(0, len(unique_ids), 20):
+            batch = unique_ids[start : start + 20]
+            params = {"ids": ",".join(str(item_id) for item_id in batch)}
+            if attributes is not None:
+                if isinstance(attributes, str):
+                    params["attributes"] = attributes
+                else:
+                    params["attributes"] = ",".join(attributes)
+
+            response = self.client.request("GET", "/items", params=params)
+            if not isinstance(response, list):
+                raise MeliAPIError(
+                    message="Unexpected non-list response from the items multiget",
+                    status_code=200,
+                    response_text=str(response),
+                )
+
+            if include_errors:
+                results.extend(response)
+                continue
+
+            # The API may return entries in another order; match them by body id.
+            entries_by_id = {}
+            for entry in response:
+                if entry.get("code") != 200:
+                    continue
+                body = entry.get("body")
+                if isinstance(body, dict):
+                    entries_by_id[body.get("id")] = body
+            for item_id in batch:
+                body = entries_by_id.get(item_id)
+                if body is not None:
+                    results.append(body)
+
+        return results
 
     def _format_ids(self, item_ids: Union[str, List[str]]) -> str:
         """Formatea una lista o cadena de IDs de items en un formato separado por comas."""

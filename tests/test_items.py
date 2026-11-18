@@ -1,6 +1,8 @@
 import pytest
 import responses
 
+from meli_sdk.exceptions import MeliAPIError
+
 API_URL = "https://api.mercadolibre.com"
 
 
@@ -200,3 +202,110 @@ def test_iter_all_uses_token_user_id_once(client, storage, mocked):
     rest = list(iterator)
 
     assert [first, *rest] == ["MCO1"]
+
+
+def make_items(*ids):
+    """Build multiget entries for the given ids."""
+    return [{"code": 200, "body": {"id": item_id}} for item_id in ids]
+
+
+def test_get_many_batches_by_20_and_keeps_order(client, mocked):
+    """45 ids make three calls and the result keeps the input order."""
+    ids = [f"MCO{index}" for index in range(1, 46)]
+    batches = [ids[:20], ids[20:40], ids[40:]]
+    for batch in batches:
+        # The API may return entries in a different order; match them by body id.
+        entries = list(reversed(make_items(*batch)))
+        mocked.add(
+            responses.GET,
+            f"{API_URL}/items",
+            json=entries,
+            match=[responses.matchers.query_param_matcher({"ids": ",".join(batch)})],
+        )
+
+    result = client.items.get_many(ids)
+
+    assert [item["id"] for item in result] == ids
+    assert len(mocked.calls) == 3
+
+
+def test_get_many_deduplicates_ids(client, mocked):
+    """Repeated ids are sent once, in first-seen order."""
+    mocked.add(
+        responses.GET,
+        f"{API_URL}/items",
+        json=make_items("MCO1", "MCO2"),
+        match=[responses.matchers.query_param_matcher({"ids": "MCO1,MCO2"})],
+    )
+
+    result = client.items.get_many(["MCO1", "MCO2", "MCO1"])
+
+    assert [item["id"] for item in result] == ["MCO1", "MCO2"]
+
+
+@pytest.mark.parametrize("attributes", [["id", "price"], "id,price"])
+def test_get_many_sends_attributes(client, mocked, attributes):
+    """Attributes are joined when given as a list and passed through as a string."""
+    mocked.add(
+        responses.GET,
+        f"{API_URL}/items",
+        json=make_items("MCO1"),
+        match=[
+            responses.matchers.query_param_matcher(
+                {"ids": "MCO1", "attributes": "id,price"}
+            )
+        ],
+    )
+
+    assert client.items.get_many(["MCO1"], attributes=attributes) == [{"id": "MCO1"}]
+
+
+def test_get_many_skips_errors_by_default(client, mocked):
+    """Failed ids are skipped unless include_errors is set."""
+    entries = [
+        {"code": 200, "body": {"id": "MCO1"}},
+        {"code": 404, "body": {"error": "not_found"}},
+    ]
+    mocked.add(
+        responses.GET,
+        f"{API_URL}/items",
+        json=entries,
+        match=[responses.matchers.query_param_matcher({"ids": "MCO1,MCO2"})],
+    )
+
+    assert client.items.get_many(["MCO1", "MCO2"]) == [{"id": "MCO1"}]
+
+
+def test_get_many_include_errors_returns_raw_entries(client, mocked):
+    """include_errors returns the raw code/body entries."""
+    entries = [
+        {"code": 200, "body": {"id": "MCO1"}},
+        {"code": 404, "body": {"error": "not_found"}},
+    ]
+    mocked.add(
+        responses.GET,
+        f"{API_URL}/items",
+        json=entries,
+        match=[responses.matchers.query_param_matcher({"ids": "MCO1,MCO2"})],
+    )
+
+    assert client.items.get_many(["MCO1", "MCO2"], include_errors=True) == entries
+
+
+def test_get_many_empty_input_makes_no_call(client, mocked):
+    """An empty input returns [] without a request."""
+    assert client.items.get_many([]) == []
+    assert len(mocked.calls) == 0
+
+
+def test_get_many_non_list_response_raises(client, mocked):
+    """A non-list response raises MeliAPIError."""
+    mocked.add(
+        responses.GET,
+        f"{API_URL}/items",
+        json={"results": []},
+        match=[responses.matchers.query_param_matcher({"ids": "MCO1"})],
+    )
+
+    with pytest.raises(MeliAPIError):
+        client.items.get_many(["MCO1"])

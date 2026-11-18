@@ -24,12 +24,21 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
 - `exchange_code(...)` para canjear el código de autorización y guardar el primer token.
 - `User-Agent` identificable (`meli-sdk/<versión> python-requests/<versión>`), personalizable con
   `user_agent=` y sobrescribible por llamada.
+- `bills.upload_fiscal_document` acepta `bytes`, `bytearray` o un objeto de archivo binario, además
+  de rutas, y un `filename=` explícito.
 
 ### Corregido
 - La carrera entre renovaciones concurrentes ya no invalida la sesión: el refresh token se canjea
   una sola vez y los hilos que esperan reutilizan el token nuevo.
 - Las peticiones y la renovación del token usan una `requests.Session` persistente y un timeout
   por defecto de 30 segundos.
+- `upload_fiscal_document` envía el documento con `Content-Type: application/pdf`, que Mercado Libre
+  exige para aceptar la factura.
+- `has_fiscal_document` ya no devuelve `True` cuando `fiscal_documents` está vacío.
+
+### Cambios incompatibles
+- El segundo parámetro de `upload_fiscal_document` se renombra de `file_path` a `document`. Las
+  llamadas posicionales siguen funcionando; las que usan `file_path=` deben actualizarse.
 
 ## [1.0.0a1] - sin publicar
 

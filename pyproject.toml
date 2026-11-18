@@ -25,7 +25,15 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "responses>=0.25", "freezegun>=1.4", "build>=1.0", "ruff>=0.6"]
+dev = [
+    "pytest>=8.0",
+    "responses>=0.25",
+    "freezegun>=1.4",
+    "build>=1.0",
+    "ruff>=0.6",
+    "Pillow>=10",
+]
+images = ["Pillow>=10"]
 
 [project.urls]
 Homepage = "https://github.com/camilordz1/meli-sdk"

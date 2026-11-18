@@ -4,7 +4,7 @@ import os
 import json
 import tempfile
 import time
-from MeliAPIClient import Session, Order, Bill, Ship
+from meli_sdk import Session, Order, Bill, Ship
 
 
 class TestLegacyCompatibility(unittest.TestCase):

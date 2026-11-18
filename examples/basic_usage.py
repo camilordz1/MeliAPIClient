@@ -1,13 +1,12 @@
 import os
 from dotenv import load_dotenv
-from MeliAPIClient import Session, Order, Bill
-from MeliAPIClient.exceptions import MeliAPIError
-
-# Cargar variables de entorno
-load_dotenv()
+from meli_sdk import Session, Order, Bill
+from meli_sdk.exceptions import MeliAPIError
 
 
 def run():
+    # Cargar variables de entorno al ejecutar el ejemplo
+    load_dotenv()
     print("=== Inicializando Sesión ===")
     try:
         session = Session(

@@ -3,8 +3,8 @@ import time
 import pytest
 import responses
 
-from MeliAPIClient.client import MeliClient
-from MeliAPIClient.storage import MemoryTokenStorage
+from meli_sdk.client import MeliClient
+from meli_sdk.storage import MemoryTokenStorage
 
 
 @pytest.fixture

@@ -1,23 +1,25 @@
-from MeliAPIClient.session import Session
-from MeliAPIClient.orders import Order, Orders
-from MeliAPIClient.bills import Bill, Bills
-from MeliAPIClient.shipments import Ship, Shipments
-from MeliAPIClient.items import Items
-from MeliAPIClient.metrics import Metrics
-from MeliAPIClient.actions import Actions
-from MeliAPIClient.client import MeliClient
-from MeliAPIClient.storage import (
+from .session import Session
+from .orders import Order, Orders
+from .bills import Bill, Bills
+from .shipments import Ship, Shipments
+from .items import Items
+from .metrics import Metrics
+from .actions import Actions
+from .client import MeliClient
+from .storage import (
     TokenStorage,
     FileTokenStorage,
     MemoryTokenStorage,
     CallbackTokenStorage,
 )
-from MeliAPIClient.exceptions import (
+from .exceptions import (
     MeliError,
     MeliAPIError,
     MeliTokenExpiredError,
     MeliConnectionError,
 )
+
+__version__ = "1.0.0a1"
 
 __all__ = [
     "Session",

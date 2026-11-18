@@ -1,7 +1,7 @@
 import pytest
 import responses
 
-from MeliAPIClient.exceptions import MeliAPIError
+from meli_sdk.exceptions import MeliAPIError
 
 API_URL = "https://api.mercadolibre.com"
 PDF_BYTES = b"%PDF-1.4 test"

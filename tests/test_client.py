@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import time
-from MeliAPIClient.client import MeliClient
-from MeliAPIClient.storage import MemoryTokenStorage
-from MeliAPIClient.exceptions import MeliAPIError, MeliTokenExpiredError
+from meli_sdk.client import MeliClient
+from meli_sdk.storage import MemoryTokenStorage
+from meli_sdk.exceptions import MeliAPIError, MeliTokenExpiredError
 
 
 class TestMeliClient(unittest.TestCase):

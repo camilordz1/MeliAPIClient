@@ -1,5 +1,5 @@
 class MeliError(Exception):
-    """Clase base para todas las excepciones de MeliAPIClient."""
+    """Clase base para todas las excepciones de Meli SDK."""
     pass
 
 

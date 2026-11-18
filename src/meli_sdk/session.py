@@ -6,9 +6,6 @@ from dotenv import load_dotenv
 from .client import MeliClient
 from .storage import FileTokenStorage
 
-# Cargar las variables desde el archivo .env
-load_dotenv()
-
 
 class Session:
     """Capa de compatibilidad clásica para la gestión de sesiones y tokens."""
@@ -20,6 +17,10 @@ class Session:
         user: Union[dict, str] = None,
     ) -> None:
         self.headers: dict = {"Authorization": "", "format-new": "true"}
+
+        # Load .env lazily: only the legacy Session depends on environment variables
+        if not keys or not token:
+            load_dotenv()
 
         # Si no se proporcionan parámetros, usar las variables de entorno
         self.ml_keys = read(keys) if keys else self.load_env_keys()

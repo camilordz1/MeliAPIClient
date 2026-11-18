@@ -1,7 +1,7 @@
 import unittest
 import os
 import tempfile
-from MeliAPIClient.storage import FileTokenStorage, MemoryTokenStorage, CallbackTokenStorage
+from meli_sdk.storage import FileTokenStorage, MemoryTokenStorage, CallbackTokenStorage
 
 
 class TestTokenStorage(unittest.TestCase):

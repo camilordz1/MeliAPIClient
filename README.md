@@ -1,6 +1,8 @@
-# MeliAPIClient
+# Meli SDK
 
-`MeliAPIClient` es un cliente moderno y robusto para interactuar con la API de Mercado Libre en Python. Diseñado con una arquitectura modular basada en composición, soporta el manejo de múltiples sesiones concurrentes, renovación automática de tokens, y almacenamiento flexible de credenciales (archivos locales, memoria o bases de datos), manteniendo el 100% de compatibilidad con desarrollos antiguos.
+`meli-sdk` es un cliente moderno y robusto para interactuar con la API de Mercado Libre en Python. Diseñado con una arquitectura modular basada en composición, soporta el manejo de múltiples sesiones concurrentes, renovación automática de tokens, y almacenamiento flexible de credenciales (archivos locales, memoria o bases de datos), conservando la interfaz clásica para los desarrollos existentes.
+
+> **Nota:** el paquete se llamaba anteriormente `MeliAPIClient`. El nombre de importación actual es `meli_sdk` y la distribución se publica en PyPI como `meli-sdk`.
 
 ---
 
@@ -20,7 +22,7 @@
 Instala el módulo directamente desde el entorno local de tu proyecto:
 
 ```bash
-pip install MeliAPIClient
+pip install meli-sdk
 ```
 
 ---
@@ -30,7 +32,7 @@ pip install MeliAPIClient
 Si ya tienes un script que utiliza el formato tradicional de tres archivos JSON (`ml_keys.json`, `ml_token.json`, `ml_user.json`), puedes continuar usándolo exactamente igual. El módulo renovará automáticamente el token de acceso usando el motor moderno de fondo.
 
 ```python
-from MeliAPIClient import Session, Order, Bill, Ship
+from meli_sdk import Session, Order, Bill, Ship
 
 def run():
     # Inicialización tradicional
@@ -60,7 +62,7 @@ if __name__ == "__main__":
 El diseño moderno utiliza la composición a través de un único cliente centralizado (`MeliClient`) y propiedades perezosas para acceder a los recursos.
 
 ```python
-from MeliAPIClient import MeliClient, FileTokenStorage
+from meli_sdk import MeliClient, FileTokenStorage
 
 # 1. Definir dónde almacenar el token de esta sesión específica
 storage = FileTokenStorage("tokens/cuenta_1.json")
@@ -88,7 +90,7 @@ client.items.update_stock("MCO123456789", nuevo_stock=15)
 Si quieres guardar los tokens de acceso en una base de datos (por ejemplo, en un modelo de Django, SQLAlchemy, o en Redis) en lugar de archivos JSON locales, utiliza `CallbackTokenStorage` inyectando funciones de carga y guardado:
 
 ```python
-from MeliAPIClient import MeliClient, CallbackTokenStorage
+from meli_sdk import MeliClient, CallbackTokenStorage
 
 # Supongamos que tienes un modelo Django o SQLAlchemy para las credenciales
 def load_token_from_db():
@@ -136,7 +138,7 @@ desarrollo:
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -r requirements-dev.txt -e .
+pip install -e ".[dev]"
 ```
 
 Ejecuta la suite de pruebas con pytest:
@@ -184,7 +186,7 @@ python -m pytest
 El módulo define excepciones claras que heredan de `MeliError`:
 
 ```python
-from MeliAPIClient.exceptions import MeliAPIError, MeliTokenExpiredError
+from meli_sdk.exceptions import MeliAPIError, MeliTokenExpiredError
 
 try:
     client.items.update_price("MCO999999", 5000)

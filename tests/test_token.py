@@ -4,9 +4,9 @@ import pytest
 import responses
 from freezegun import freeze_time
 
-from MeliAPIClient.client import MeliClient
-from MeliAPIClient.exceptions import MeliTokenExpiredError
-from MeliAPIClient.storage import MemoryTokenStorage
+from meli_sdk.client import MeliClient
+from meli_sdk.exceptions import MeliTokenExpiredError
+from meli_sdk.storage import MemoryTokenStorage
 
 API_URL = "https://api.mercadolibre.com"
 FROZEN_NOW = "2026-02-01T12:00:00Z"

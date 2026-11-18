@@ -33,7 +33,7 @@ Source = "https://github.com/camilordz1/meli-sdk"
 Issues = "https://github.com/camilordz1/meli-sdk/issues"
 
 [tool.setuptools.dynamic]
-version = {attr = "meli_sdk.__version__"}
+version = {attr = "meli_sdk._version.__version__"}
 
 [tool.setuptools.packages.find]
 where = ["src"]

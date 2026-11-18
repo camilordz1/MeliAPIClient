@@ -1,3 +1,4 @@
+from ._version import __version__ as __version__
 from .actions import Actions
 from .bills import Bill, Bills
 from .client import MeliClient
@@ -18,8 +19,6 @@ from .storage import (
     MemoryTokenStorage,
     TokenStorage,
 )
-
-__version__ = "1.0.0a1"
 
 __all__ = [
     "Session",

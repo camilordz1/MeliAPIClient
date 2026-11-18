@@ -1,17 +1,18 @@
-import unittest
-from unittest.mock import patch, MagicMock
-import os
 import json
+import os
 import tempfile
 import time
-from meli_sdk import Session, Order, Bill, Ship
+import unittest
+from unittest.mock import MagicMock, patch
+
+from meli_sdk import Bill, Order, Session, Ship
 
 
 class TestLegacyCompatibility(unittest.TestCase):
 
     def setUp(self) -> None:
         self.temp_files = []
-        
+
         # Crear archivos JSON mockeados para emular ml_keys.json y ml_token.json
         self.keys_file = self.create_temp_json({"client_id": "c123", "client_secret": "sabc"})
         self.token_file = self.create_temp_json({

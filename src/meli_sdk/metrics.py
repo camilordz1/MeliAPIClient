@@ -31,13 +31,14 @@ class Metrics:
 
     def get_trends(self, site_id: str, category_id: str = None) -> list:
         """
-        Obtiene las tendencias de palabras clave de búsqueda más populares para un site_id (ej. MCO, MLA).
+        Obtiene las tendencias de palabras clave de búsqueda más populares para un site_id
+        (ej. MCO, MLA).
         Si se especifica category_id, filtra por esa categoría específica.
         """
         params = {}
         if category_id:
             params["category"] = category_id
-            
+
         # El endpoint de tendencias comúnmente devuelve un listado directamente
         response = self.client.request("GET", f"/sites/{site_id}/trends/search", params=params)
         return response if isinstance(response, list) else []
@@ -51,7 +52,8 @@ class Metrics:
         offset: int = 0,
     ) -> dict:
         """
-        Busca las preguntas recibidas por un vendedor, filtrando opcionalmente por producto o estado.
+        Busca las preguntas recibidas por un vendedor, filtrando opcionalmente por producto o
+        estado.
         Utiliza por defecto la recomendación oficial de api_version=4.
         """
         if seller_id is None:
@@ -66,7 +68,7 @@ class Metrics:
             "limit": limit,
             "offset": offset,
         }
-        
+
         if item_id:
             params["item"] = item_id
         if status:

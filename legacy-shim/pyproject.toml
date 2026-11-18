@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "MeliAPIClient"
+version = "0.1.0"
+description = "Deprecated: renamed to meli-sdk (unofficial Mercado Libre API SDK)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "Camilo Andrés Rodríguez Higuera", email = "hola@camilordz.com"}]
+keywords = ["mercadolibre", "meli-sdk", "deprecated"]
+classifiers = [
+    "Development Status :: 7 - Inactive",
+    "Programming Language :: Python :: 3",
+]
+dependencies = ["meli-sdk>=1.0.0a1"]
+
+[project.urls]
+Homepage = "https://github.com/camilordz1/meli-sdk"
+Source = "https://github.com/camilordz1/meli-sdk"
+Issues = "https://github.com/camilordz1/meli-sdk/issues"
+"New package" = "https://pypi.org/project/meli-sdk/"
+
+[tool.setuptools.packages.find]
+where = ["src"]

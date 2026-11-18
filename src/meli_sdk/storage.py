@@ -16,7 +16,8 @@ class TokenStorage:
 
 
 class FileTokenStorage(TokenStorage):
-    """Almacena el token en un archivo JSON local. Admite múltiples sesiones usando rutas diferentes."""
+    """Almacena el token en un archivo JSON local. Admite múltiples sesiones usando rutas
+    diferentes."""
 
     def __init__(self, file_path: str) -> None:
         self.file_path = file_path
@@ -35,7 +36,7 @@ class FileTokenStorage(TokenStorage):
         dir_name = os.path.dirname(self.file_path)
         if dir_name and not os.path.exists(dir_name):
             os.makedirs(dir_name, exist_ok=True)
-            
+
         with open(self.file_path, "w", encoding="utf-8") as f:
             json.dump(token_data, f, ensure_ascii=False, indent=2)
 
@@ -59,7 +60,9 @@ class CallbackTokenStorage(TokenStorage):
     Ideal para bases de datos relacionales u ORMs (SQLAlchemy, Django, Redis, etc.).
     """
 
-    def __init__(self, load_callback: Callable[[], dict], save_callback: Callable[[dict], None]) -> None:
+    def __init__(
+        self, load_callback: Callable[[], dict], save_callback: Callable[[dict], None]
+    ) -> None:
         self.load_callback = load_callback
         self.save_callback = save_callback
 

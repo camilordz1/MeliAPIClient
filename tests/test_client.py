@@ -1,9 +1,10 @@
-import unittest
-from unittest.mock import patch, MagicMock
 import time
+import unittest
+from unittest.mock import MagicMock, patch
+
 from meli_sdk.client import MeliClient
+from meli_sdk.exceptions import MeliAPIError
 from meli_sdk.storage import MemoryTokenStorage
-from meli_sdk.exceptions import MeliAPIError, MeliTokenExpiredError
 
 
 class TestMeliClient(unittest.TestCase):
@@ -49,7 +50,7 @@ class TestMeliClient(unittest.TestCase):
 
         with self.assertRaises(MeliAPIError) as ctx:
             self.client.request("GET", "/test-endpoint")
-        
+
         self.assertEqual(ctx.exception.status_code, 400)
         self.assertEqual(ctx.exception.error_code, "invalid_param")
 

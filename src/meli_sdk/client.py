@@ -1,8 +1,9 @@
 import time
+
 import requests
-from typing import Union
+
+from .exceptions import MeliAPIError, MeliConnectionError, MeliTokenExpiredError
 from .storage import TokenStorage
-from .exceptions import MeliAPIError, MeliTokenExpiredError, MeliConnectionError
 
 
 class MeliClient:
@@ -23,11 +24,11 @@ class MeliClient:
         self.token_buffer_seconds = token_buffer_seconds
 
         # Recursos (Lazy imports or direct instantiations to avoid circular dependencies)
-        from .orders import Orders
         from .bills import Bills
-        from .shipments import Shipments
         from .items import Items
         from .metrics import Metrics
+        from .orders import Orders
+        from .shipments import Shipments
 
         self.orders = Orders(self)
         self.bills = Bills(self)
@@ -107,18 +108,20 @@ class MeliClient:
 
         # Si el token no tiene fecha de expiración calculada, intentamos calcularla o refrescar
         now = time.time()
-        
+
         # Si expires_at no está o faltan menos de buffer_seconds para expirar
         is_expired = (
-            not expires_at 
-            or not access_token 
+            not expires_at
+            or not access_token
             or now >= (expires_at - self.token_buffer_seconds)
         )
 
         if is_expired:
             if not refresh_token_str:
-                raise MeliTokenExpiredError("El access token ha expirado y no hay un refresh token disponible.")
-            
+                raise MeliTokenExpiredError(
+                    "El access token ha expirado y no hay un refresh token disponible."
+                )
+
             # Renovar token
             new_token_data = self.refresh_token(refresh_token_str)
             return new_token_data["access_token"]
@@ -150,12 +153,12 @@ class MeliClient:
                 error_data = response.json()
             except ValueError:
                 pass
-            
+
             message = error_data.get("message") or error_data.get("error") or response.text
             raise MeliTokenExpiredError(f"Fallo al renovar el token: {message}")
 
         token_response = response.json()
-        
+
         # Enriquecer respuesta con marcas de tiempo calculadas locales en segundos UTC
         now = time.time()
         token_response["created_at"] = now

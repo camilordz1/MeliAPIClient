@@ -1,8 +1,10 @@
-from datetime import datetime
 import json
 import os
+from datetime import datetime
 from typing import Union
+
 from dotenv import load_dotenv
+
 from .client import MeliClient
 from .storage import FileTokenStorage
 
@@ -28,10 +30,12 @@ class Session:
         self.ml_user = read(user) if user else {}
 
         # Determinar el archivo para persistir el token
-        token_path = token if isinstance(token, str) and token.endswith(".json") else "ml_token.json"
-        
+        token_path = (
+            token if isinstance(token, str) and token.endswith(".json") else "ml_token.json"
+        )
+
         self.token_storage = FileTokenStorage(token_path)
-        
+
         # Si el token se pasó como un diccionario, o si el archivo no existe, lo inicializamos
         if isinstance(token, dict) or not os.path.exists(token_path):
             self.token_storage.save_token(self.ml_token)
@@ -57,7 +61,7 @@ class Session:
         refresh_token_str = self.ml_token.get("refresh_token")
         if not refresh_token_str:
             raise ValueError("No refresh token available to perform renewal.")
-            
+
         self.ml_token = self.client.refresh_token(refresh_token_str)
         self.headers["Authorization"] = f"Bearer {self.ml_token.get('access_token')}"
         return self.ml_token

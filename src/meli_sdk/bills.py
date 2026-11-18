@@ -1,10 +1,12 @@
 from typing import Union
-from .exceptions import MeliAPIError
+
 from .actions import Actions
+from .exceptions import MeliAPIError
 
 
 class Bills:
-    """Clase moderna para interactuar con los recursos de Facturación y Documentos Fiscales (Composición)."""
+    """Clase moderna para interactuar con los recursos de Facturación y Documentos Fiscales
+    (Composición)."""
 
     def __init__(self, client) -> None:
         self.client = client

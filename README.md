@@ -1,5 +1,7 @@
 # Meli SDK
 
+[![CI](https://github.com/camilordz1/meli-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/camilordz1/meli-sdk/actions/workflows/ci.yml)
+
 `meli-sdk` es un cliente moderno y robusto para interactuar con la API de Mercado Libre en Python. Diseñado con una arquitectura modular basada en composición, soporta el manejo de múltiples sesiones concurrentes, renovación automática de tokens, y almacenamiento flexible de credenciales (archivos locales, memoria o bases de datos), conservando la interfaz clásica para los desarrollos existentes.
 
 > **Nota:** el paquete se llamaba anteriormente `MeliAPIClient`. El nombre de importación actual es `meli_sdk` y la distribución se publica en PyPI como `meli-sdk`.

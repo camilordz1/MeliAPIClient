@@ -1,8 +1,9 @@
-from typing import Union, List
+from typing import List, Union
 
 
 class Items:
-    """Clase para interactuar con los recursos de Publicaciones de Productos (Items) de Mercado Libre."""
+    """Clase para interactuar con los recursos de Publicaciones de Productos (Items) de
+    Mercado Libre."""
 
     def __init__(self, client) -> None:
         self.client = client
@@ -65,7 +66,7 @@ class Items:
         """
         ids_str = self._format_ids(item_ids)
         params = {"ids": ids_str}
-        
+
         if date_from:
             params["date_from"] = date_from
         if date_to:

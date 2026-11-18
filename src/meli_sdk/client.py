@@ -1,10 +1,19 @@
+import logging
 import math
 import time
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from urllib.parse import urlsplit
 
 import requests
 
 from .exceptions import MeliAPIError, MeliConnectionError, MeliTokenExpiredError
 from .storage import TokenStorage
+
+logger = logging.getLogger("meli_sdk")
+
+RETRYABLE_STATUSES = frozenset({500, 502, 503, 504})
+IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "PUT", "DELETE"})
 
 
 def _validate_timeout(timeout):
@@ -36,6 +45,40 @@ def _validate_timeout(timeout):
     raise ValueError(message)
 
 
+def _validate_max_retries(value):
+    """Return a validated max_retries, raising ValueError when it is not usable."""
+    message = f"max_retries must be an int >= 0, got {value!r}"
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(message)
+    return value
+
+
+def _validate_backoff_factor(value):
+    """Return a validated backoff_factor, raising ValueError when it is not usable."""
+    message = f"backoff_factor must be a finite number >= 0, got {value!r}"
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or value < 0
+    ):
+        raise ValueError(message)
+    return value
+
+
+def _validate_max_backoff(value):
+    """Return a validated max_backoff, raising ValueError when it is not usable."""
+    message = f"max_backoff must be a finite number > 0, got {value!r}"
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, (int, float))
+        or not math.isfinite(value)
+        or value <= 0
+    ):
+        raise ValueError(message)
+    return value
+
+
 class MeliClient:
     """Cliente central de la API de Mercado Libre."""
 
@@ -49,6 +92,9 @@ class MeliClient:
         *,
         timeout: float | tuple[float, float] = 30.0,
         session: requests.Session | None = None,
+        max_retries: int = 3,
+        backoff_factor: float = 0.5,
+        max_backoff: float = 60.0,
     ) -> None:
         self.client_id = client_id
         self.client_secret = client_secret
@@ -59,6 +105,10 @@ class MeliClient:
         self.session = session if session is not None else requests.Session()
         self._owns_session = session is None
         self._closed = False
+        self.max_retries = _validate_max_retries(max_retries)
+        self.backoff_factor = _validate_backoff_factor(backoff_factor)
+        self.max_backoff = _validate_max_backoff(max_backoff)
+        self._sleep = time.sleep
 
         # Recursos (Lazy imports or direct instantiations to avoid circular dependencies)
         from .bills import Bills
@@ -95,9 +145,7 @@ class MeliClient:
         timeout = kwargs.pop("timeout", self.timeout)
 
         try:
-            response = self.session.request(
-                method, url, headers=headers, timeout=timeout, **kwargs
-            )
+            response = self._send(method, url, headers=headers, timeout=timeout, **kwargs)
         except requests.RequestException as e:
             raise MeliConnectionError(f"Error de conexión con la API de Mercado Libre: {e}") from e
 
@@ -131,6 +179,118 @@ class MeliClient:
                 status_code=response.status_code,
                 response_text=response.text,
             ) from e
+
+    def _send(self, method: str, url: str, **kwargs) -> requests.Response:
+        """Send a request and retry the safe subset of transient failures."""
+        method_name = method.upper()
+        idempotent = method_name in IDEMPOTENT_METHODS
+        attempt = 0
+
+        while True:
+            try:
+                response = self.session.request(method, url, **kwargs)
+            except (requests.ConnectionError, requests.Timeout) as exc:
+                if (
+                    not idempotent
+                    or attempt >= self.max_retries
+                    or not self._rewind_files(kwargs.get("files"))
+                ):
+                    raise
+                delay = self._backoff_delay(attempt)
+                self._log_retry(method_name, url, delay, type(exc).__name__, attempt)
+                self._sleep(delay)
+                attempt += 1
+                continue
+
+            retryable = response.status_code == 429 or (
+                response.status_code in RETRYABLE_STATUSES and idempotent
+            )
+            if (
+                retryable
+                and attempt < self.max_retries
+                and self._rewind_files(kwargs.get("files"))
+            ):
+                delay = self._retry_delay(response, attempt)
+                self._log_retry(method_name, url, delay, response.status_code, attempt)
+                self._sleep(delay)
+                attempt += 1
+                continue
+
+            return response
+
+    def _log_retry(self, method: str, url: str, delay: float, reason, attempt: int) -> None:
+        """Log a retry without headers, query strings, tokens or bodies."""
+        logger.warning(
+            "Retry %d/%d for %s %s in %.2fs (reason: %s)",
+            attempt + 1,
+            self.max_retries,
+            method,
+            urlsplit(url).path,
+            delay,
+            reason,
+        )
+
+    def _backoff_delay(self, attempt: int) -> float:
+        """Return the exponential backoff delay for an attempt, capped."""
+        return min(self.backoff_factor * 2**attempt, self.max_backoff)
+
+    def _retry_delay(self, response: requests.Response, attempt: int) -> float:
+        """Return the delay requested by the response, capped by max_backoff."""
+        retry_after = self._parse_retry_after(response.headers.get("Retry-After"))
+        if retry_after is None:
+            return self._backoff_delay(attempt)
+        return min(retry_after, self.max_backoff)
+
+    @staticmethod
+    def _parse_retry_after(value):
+        """Parse a Retry-After header as seconds or as an HTTP-date."""
+        if not value:
+            return None
+
+        value = value.strip()
+        try:
+            seconds = float(value)
+        except ValueError:
+            pass
+        else:
+            if math.isfinite(seconds) and seconds >= 0:
+                return seconds
+            return None
+
+        try:
+            retry_at = parsedate_to_datetime(value)
+        except (TypeError, ValueError):
+            return None
+        if retry_at is None:
+            return None
+        if retry_at.tzinfo is None:
+            retry_at = retry_at.replace(tzinfo=timezone.utc)
+        return max((retry_at - datetime.now(timezone.utc)).total_seconds(), 0.0)
+
+    def _rewind_files(self, files) -> bool:
+        """Rewind the file objects of a request before retrying it."""
+        if not files:
+            return True
+
+        values = files.values() if hasattr(files, "values") else files
+        for value in values:
+            fileobj = value[1] if isinstance(value, tuple) and len(value) >= 2 else value
+            if not hasattr(fileobj, "read"):
+                continue
+            if not self._is_seekable(fileobj):
+                return False
+            fileobj.seek(0)
+        return True
+
+    @staticmethod
+    def _is_seekable(fileobj) -> bool:
+        """Return True when seek(0) can safely rewind a file object."""
+        if not hasattr(fileobj, "seek"):
+            return False
+        seekable = getattr(fileobj, "seekable", None)
+        if callable(seekable) and not seekable():
+            return False
+        return True
 
     def ensure_token_valid(self) -> str:
         """
@@ -184,8 +344,8 @@ class MeliClient:
         }
 
         try:
-            response = self.session.post(
-                url, data=payload, headers=headers, timeout=self.timeout
+            response = self._send(
+                "POST", url, data=payload, headers=headers, timeout=self.timeout
             )
         except requests.RequestException as e:
             raise MeliConnectionError(f"Error al conectar para renovar el token: {e}") from e

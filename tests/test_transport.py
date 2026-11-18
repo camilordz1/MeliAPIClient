@@ -58,14 +58,12 @@ def test_4xx_raises_api_error_with_json_fields(client, mocked):
         json={"message": "bad", "error": "validation_error"},
     )
 
-    try:
+    with pytest.raises(MeliAPIError) as exc_info:
         client.request("GET", "/users/me")
-    except MeliAPIError as exc:
-        assert exc.status_code == 400
-        assert exc.error_code == "validation_error"
-        assert "bad" in str(exc)
-    else:
-        raise AssertionError("MeliAPIError was not raised")
+
+    assert exc_info.value.status_code == 400
+    assert exc_info.value.error_code == "validation_error"
+    assert "bad" in str(exc_info.value)
 
 
 def test_4xx_non_json_body_uses_text(client, mocked):
@@ -78,12 +76,10 @@ def test_4xx_non_json_body_uses_text(client, mocked):
         content_type="text/plain",
     )
 
-    try:
+    with pytest.raises(MeliAPIError) as exc_info:
         client.request("GET", "/users/me")
-    except MeliAPIError as exc:
-        assert "boom" in str(exc)
-    else:
-        raise AssertionError("MeliAPIError was not raised")
+
+    assert "boom" in str(exc_info.value)
 
 
 def test_204_returns_empty_dict(client, mocked):
@@ -110,12 +106,10 @@ def test_invalid_json_on_200_raises_api_error(client, mocked):
         content_type="application/json",
     )
 
-    try:
+    with pytest.raises(MeliAPIError) as exc_info:
         client.request("GET", "/users/me")
-    except MeliAPIError as exc:
-        assert exc.status_code == 200
-    else:
-        raise AssertionError("MeliAPIError was not raised")
+
+    assert exc_info.value.status_code == 200
 
 
 def test_connection_error_raises_meli_connection_error(client, mocked):
@@ -126,12 +120,8 @@ def test_connection_error_raises_meli_connection_error(client, mocked):
         body=requests.ConnectionError("x"),
     )
 
-    try:
+    with pytest.raises(MeliConnectionError):
         client.request("GET", "/users/me")
-    except MeliConnectionError:
-        pass
-    else:
-        raise AssertionError("MeliConnectionError was not raised")
 
 
 @pytest.mark.xfail(

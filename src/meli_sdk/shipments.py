@@ -1,9 +1,11 @@
 from typing import Union
+
 from .actions import Actions
 
 
 class Shipments:
-    """Clase moderna para interactuar con el recurso de Envíos (Shipments) de Mercado Libre (Composición)."""
+    """Clase moderna para interactuar con el recurso de Envíos (Shipments) de Mercado Libre
+    (Composición)."""
 
     def __init__(self, client) -> None:
         self.client = client

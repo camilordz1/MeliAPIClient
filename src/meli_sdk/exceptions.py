@@ -6,7 +6,13 @@ class MeliError(Exception):
 class MeliAPIError(MeliError):
     """Excepción para errores devueltos por la API de Mercado Libre."""
 
-    def __init__(self, message: str, status_code: int = None, error_code: str = None, response_text: str = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        status_code: int = None,
+        error_code: str = None,
+        response_text: str = None,
+    ) -> None:
         super().__init__(message)
         self.status_code = status_code
         self.error_code = error_code

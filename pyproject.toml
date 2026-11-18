@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ dynamic = ["version"]
 description = "Unofficial Python SDK for the Mercado Libre API"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{name = "Camilo Andrés Rodríguez Higuera", email = "hola@camilordz.com"}]
 dependencies = ["requests>=2.31", "python-dotenv>=1.0"]
 keywords = ["python", "mercado libre", "mercadolibre", "api client", "sdk"]
@@ -16,7 +17,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries :: Python Modules",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -25,7 +25,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "responses>=0.25", "freezegun>=1.4", "build>=1.0"]
+dev = ["pytest>=8.0", "responses>=0.25", "freezegun>=1.4", "build>=1.0", "ruff>=0.6"]
 
 [project.urls]
 Homepage = "https://github.com/camilordz1/meli-sdk"
@@ -44,3 +44,14 @@ meli_sdk = ["py.typed"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]

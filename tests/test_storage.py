@@ -1,7 +1,8 @@
-import unittest
 import os
 import tempfile
-from meli_sdk.storage import FileTokenStorage, MemoryTokenStorage, CallbackTokenStorage
+import unittest
+
+from meli_sdk.storage import CallbackTokenStorage, FileTokenStorage, MemoryTokenStorage
 
 
 class TestTokenStorage(unittest.TestCase):
@@ -27,7 +28,7 @@ class TestTokenStorage(unittest.TestCase):
 
             test_token = {"access_token": "123", "refresh_token": "456", "expires_in": 3600}
             storage.save_token(test_token)
-            
+
             # Cargar y verificar
             loaded = storage.load_token()
             self.assertEqual(loaded["access_token"], "123")

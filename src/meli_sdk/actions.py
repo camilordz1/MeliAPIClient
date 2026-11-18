@@ -1,12 +1,14 @@
-import json
+from typing import Union
+
 import requests
-from typing import Union, Any, Dict
 
 
 class Actions:
     """Clase base de conveniencia para las llamadas HTTP de la API clásica (Legacy)."""
 
-    def get(self, url: str, headers: dict, params: dict = None, data: dict = None) -> Union[dict, bool]:
+    def get(
+        self, url: str, headers: dict, params: dict = None, data: dict = None
+    ) -> Union[dict, bool]:
         """Realiza una petición GET clásica, con comprobación y auto-refresco del token."""
         if params is None:
             params = {}
@@ -32,13 +34,21 @@ class Actions:
             # Si no es JSON pero responde OK, o si falla la decodificación
             return {}
 
-    def post(self, url: str, headers: dict, params: dict = None, data: dict = None, file: dict = None, **kwargs) -> Union[dict, None]:
+    def post(
+        self,
+        url: str,
+        headers: dict,
+        params: dict = None,
+        data: dict = None,
+        file: dict = None,
+        **kwargs,
+    ) -> Union[dict, None]:
         """Realiza una petición POST clásica. Corrige errores en nombres de parámetros."""
         if params is None:
             params = {}
         if data is None:
             data = {}
-        
+
         # Resolver incompatibilidad de 'fl' vs 'file' en el upload original
         files = file or kwargs.get("fl") or kwargs.get("files")
 
@@ -48,7 +58,9 @@ class Actions:
             headers = self.session.headers
 
         try:
-            response = requests.request("POST", url, headers=headers, params=params, data=data, files=files)
+            response = requests.request(
+                "POST", url, headers=headers, params=params, data=data, files=files
+            )
         except requests.RequestException:
             return print("[ERROR] Error de conexión en POST")
 

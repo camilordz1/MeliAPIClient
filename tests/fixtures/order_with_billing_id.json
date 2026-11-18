@@ -1,0 +1,12 @@
+{
+  "id": 2000001,
+  "site_id": "MCO",
+  "buyer": {
+    "id": 300001,
+    "nickname": "COMPRADOR",
+    "first_name": "Ana",
+    "last_name": "Gomez",
+    "billing_info": {"id": "BI-0001"}
+  },
+  "order_items": []
+}

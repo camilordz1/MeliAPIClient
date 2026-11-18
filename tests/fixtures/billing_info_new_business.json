@@ -1,0 +1,24 @@
+{
+  "id": "BI-0002",
+  "site_id": "MCO",
+  "seller": {"cust_id": "SELLER-1"},
+  "buyer": {
+    "cust_id": "BUYER-2",
+    "billing_info": {
+      "name": "Facturas Felices SAS",
+      "identification": {"type": " nit ", "number": "900123456-7"},
+      "address": {
+        "street_name": "Avenida Siempre Viva",
+        "street_number": "742",
+        "city_name": "Medellin",
+        "comment": "Piso 3",
+        "neighborhood": "Laureles",
+        "country_id": "CO",
+        "zip_code": "050001",
+        "state": {"code": "ANT", "name": "Antioquia"}
+      },
+      "attributes": {"cust_type": "BU", "normalized": "true"},
+      "taxes": {"taxpayer_type": {"id": "1", "description": "Responsable de IVA"}}
+    }
+  }
+}

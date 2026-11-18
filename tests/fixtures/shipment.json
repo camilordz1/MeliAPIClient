@@ -1,0 +1,30 @@
+{
+  "id": 4028374928,
+  "status": "shipped",
+  "substatus": "in_transit",
+  "mode": "me2",
+  "logistic_type": "drop_off",
+  "tracking_number": "TRACK-123",
+  "base_cost": 5000,
+  "order_cost": 8900,
+  "shipping_option": {
+    "cost": 8900,
+    "list_cost": 9900,
+    "currency_id": "COP",
+    "name": "Envio estandar"
+  },
+  "receiver_address": {
+    "address_line": "Calle Falsa 123, Apto 101",
+    "street_name": "Calle Falsa",
+    "street_number": "123",
+    "comment": "Apto 101",
+    "zip_code": "110111",
+    "receiver_name": "Ana Gomez",
+    "receiver_phone": "3001234567",
+    "city": {"id": "1", "name": "Bogota"},
+    "state": {"id": "DC", "name": "Bogota D.C."},
+    "country": {"id": "CO", "name": "Colombia"},
+    "neighborhood": {"id": null, "name": "Centro"},
+    "municipality": {"id": "2", "name": "Bogota"}
+  }
+}

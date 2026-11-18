@@ -37,7 +37,7 @@ def test_search_builds_params_for_month(client, mocked):
     params = {
         "seller": "12345",
         "order.date_created.from": "2026-02-01T00:00:00.000-05:00",
-        "order.date_created.to": "2026-02-28T23:59:59.000-05:00",
+        "order.date_created.to": "2026-02-28T23:59:59.999-05:00",
         "limit": "50",
         "offset": "0",
         "sort": "date_asc",
@@ -74,7 +74,7 @@ def test_date_custom_offset(client):
     date_range = client.orders.date(2026, 2, utc_offset="+00:00")
 
     assert date_range["start"] == "2026-02-01T00:00:00.000+00:00"
-    assert date_range["end"] == "2026-02-28T23:59:59.000+00:00"
+    assert date_range["end"] == "2026-02-28T23:59:59.999+00:00"
 
 
 @pytest.mark.parametrize("utc_offset", ["-5", "05:00", "-25:00", "-05:60", "abc"])
@@ -97,7 +97,7 @@ def test_date_without_year_month_uses_offset_now(client):
         date_range = client.orders.date()
 
     assert date_range["start"] == "2026-02-01T00:00:00.000-05:00"
-    assert date_range["end"] == "2026-02-28T23:59:59.000-05:00"
+    assert date_range["end"] == "2026-02-28T23:59:59.999-05:00"
     assert date_range["year"] == 2026
     assert date_range["month"] == "Feb"
 
@@ -122,7 +122,7 @@ def test_search_status_sort_and_extra_params(client, mocked):
     params = {
         "seller": "12345",
         "order.date_created.from": "2026-02-01T00:00:00.000-05:00",
-        "order.date_created.to": "2026-02-28T23:59:59.000-05:00",
+        "order.date_created.to": "2026-02-28T23:59:59.999-05:00",
         "limit": "50",
         "offset": "0",
         "sort": "date_desc",
@@ -166,7 +166,7 @@ def test_legacy_order_list_uses_colombia_offset(mocked, tmp_path):
     params = {
         "seller": "99999",
         "order.date_created.from": "2026-02-01T00:00:00.000-05:00",
-        "order.date_created.to": "2026-02-28T23:59:59.000-05:00",
+        "order.date_created.to": "2026-02-28T23:59:59.999-05:00",
         "limit": "50",
         "offset": "0",
         "sort": "date_asc",
@@ -245,7 +245,7 @@ def test_iter_all_passes_filters(client, mocked):
         assert params["order.status"] == "paid"
         assert params["sort"] == "date_desc"
         assert params["order.date_created.from"] == "2026-02-01T00:00:00.000-05:00"
-        assert params["order.date_created.to"] == "2026-02-28T23:59:59.000-05:00"
+        assert params["order.date_created.to"] == "2026-02-28T23:59:59.999-05:00"
 
 
 @pytest.mark.parametrize("page_size", [0, 51, True])
@@ -253,3 +253,73 @@ def test_iter_all_rejects_invalid_page_size(client, mocked, page_size):
     """page_size must be an int between 1 and 50, checked on the first next()."""
     with pytest.raises(ValueError):
         next(client.orders.iter_all(year=2026, month=2, page_size=page_size))
+
+
+def search_params(offset, **overrides):
+    """Build the full query params for an orders search page."""
+    params = {
+        "seller": "12345",
+        "order.date_created.from": "2026-02-01T00:00:00.000-05:00",
+        "order.date_created.to": "2026-02-28T23:59:59.999-05:00",
+        "limit": "50",
+        "sort": "date_asc",
+        "offset": str(offset),
+    }
+    params.update(overrides)
+    return params
+
+
+def test_date_range_end_includes_last_millisecond(client):
+    """The range includes the last millisecond of the month."""
+    assert client.orders.date(2026, 2)["end"] == "2026-02-28T23:59:59.999-05:00"
+
+
+def test_iter_all_resolves_period_once(client, mocked):
+    """The month is resolved once, so crossing midnight mid-iteration keeps the range."""
+    with freeze_time("2026-03-01T04:59:59Z") as freezer:
+        mocked.add(
+            responses.GET,
+            f"{API_URL}/orders/search",
+            json=page(range(1, 51), 60),
+            match=[responses.matchers.query_param_matcher(search_params(0))],
+        )
+        mocked.add(
+            responses.GET,
+            f"{API_URL}/orders/search",
+            json=page(range(51, 61), 60),
+            match=[responses.matchers.query_param_matcher(search_params(50))],
+        )
+
+        iterator = client.orders.iter_all()
+        orders = [next(iterator) for _ in range(50)]
+        freezer.move_to("2026-03-01T05:00:01Z")
+        orders.extend(iterator)
+
+    assert [order["id"] for order in orders] == list(range(1, 61))
+
+
+def test_iter_all_resolves_seller_once(client, storage, mocked):
+    """A user_id change during iteration does not change the seller param."""
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page([1], 3))
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page([2], 3))
+    mocked.add(responses.GET, f"{API_URL}/orders/search", json=page([3], 3))
+
+    iterator = client.orders.iter_all(year=2026, month=2)
+    first = next(iterator)
+
+    token = storage.load_token()
+    token["user_id"] = 777
+    storage.save_token(token)
+
+    rest = list(iterator)
+
+    assert [first["id"], *[order["id"] for order in rest]] == [1, 2, 3]
+    sellers = [query_params(call)["seller"] for call in mocked.calls]
+    assert sellers == ["12345", "12345", "12345"]
+
+
+@pytest.mark.parametrize("extra_params", [{"offset": 5}, {"limit": 10}])
+def test_iter_all_rejects_offset_or_limit_in_extra_params(client, mocked, extra_params):
+    """Pagination keys cannot be overridden through extra_params."""
+    with pytest.raises(ValueError):
+        next(client.orders.iter_all(year=2026, month=2, extra_params=extra_params))

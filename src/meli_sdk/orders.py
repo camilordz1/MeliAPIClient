@@ -64,7 +64,7 @@ class Orders:
             raise ValueError("start must be less than or equal to end")
 
         start_date = f"{dt:%Y-%m}-{start_day:02d}T00:00:00.000{utc_offset}"
-        end_date = f"{dt:%Y-%m}-{end_day:02d}T23:59:59.000{utc_offset}"
+        end_date = f"{dt:%Y-%m}-{end_day:02d}T23:59:59.999{utc_offset}"
 
         return {
             "start": start_date,
@@ -140,6 +140,21 @@ class Orders:
             or not 1 <= page_size <= 50
         ):
             raise ValueError("page_size must be an int between 1 and 50")
+
+        if extra_params and ("offset" in extra_params or "limit" in extra_params):
+            raise ValueError("extra_params must not contain 'offset' or 'limit'")
+
+        if year is None and month is None:
+            now = datetime.now(_parse_utc_offset(utc_offset))
+            year, month = now.year, now.month
+
+        if seller_id is None:
+            token_data = self.client.token_storage.load_token()
+            seller_id = token_data.get("user_id")
+            if not seller_id:
+                raise ValueError(
+                    "seller_id es requerido o no se pudo obtener del token activo."
+                )
 
         offset = 0
         while True:

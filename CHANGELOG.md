@@ -37,6 +37,8 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   por defecto de 30 segundos.
 - El rango de fechas de `orders.search`/`orders.date` se calcula en hora de Colombia (`-05:00`) y
   valida que `year` y `month` se pasen juntos y que los días estén dentro del mes.
+- El fin del rango de fechas incluye el último milisegundo del mes (`23:59:59.999`), así que las
+  órdenes creadas en el último segundo ya no quedan fuera de ambos meses.
 - `upload_fiscal_document` envía el documento con `Content-Type: application/pdf`, que Mercado Libre
   exige para aceptar la factura.
 - `has_fiscal_document` ya no devuelve `True` cuando `fiscal_documents` está vacío.

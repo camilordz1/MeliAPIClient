@@ -2,7 +2,7 @@ import pytest
 import requests
 import responses
 
-from MeliAPIClient.exceptions import MeliAPIError, MeliConnectionError
+from meli_sdk.exceptions import MeliAPIError, MeliConnectionError
 
 API_URL = "https://api.mercadolibre.com"
 

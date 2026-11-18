@@ -309,3 +309,82 @@ def test_get_many_non_list_response_raises(client, mocked):
 
     with pytest.raises(MeliAPIError):
         client.items.get_many(["MCO1"])
+
+
+def test_get_many_attributes_without_id_still_returns_items(client, mocked):
+    """id is requested even if the caller omits it, so the order can be restored."""
+    mocked.add(
+        responses.GET,
+        f"{API_URL}/items",
+        json=[{"code": 200, "body": {"id": "MCO1", "price": 10}}],
+        match=[
+            responses.matchers.query_param_matcher(
+                {"ids": "MCO1", "attributes": "id,price"}
+            )
+        ],
+    )
+
+    assert client.items.get_many(["MCO1"], attributes=["price"]) == [
+        {"id": "MCO1", "price": 10}
+    ]
+
+
+def test_get_many_attributes_string_is_normalized(client, mocked):
+    """A comma-separated string is split and trimmed, and id is prepended."""
+    mocked.add(
+        responses.GET,
+        f"{API_URL}/items",
+        json=make_items("MCO1"),
+        match=[
+            responses.matchers.query_param_matcher(
+                {"ids": "MCO1", "attributes": "id,price,title"}
+            )
+        ],
+    )
+
+    client.items.get_many(["MCO1"], attributes=" price , title ")
+
+
+def test_get_many_single_string_id(client, mocked):
+    """A single string id is one id, not a sequence of characters."""
+    mocked.add(
+        responses.GET,
+        f"{API_URL}/items",
+        json=make_items("MCO1"),
+        match=[responses.matchers.query_param_matcher({"ids": "MCO1"})],
+    )
+
+    assert client.items.get_many("MCO1") == [{"id": "MCO1"}]
+
+
+def test_get_many_normalizes_and_deduplicates_ids(client, mocked):
+    """Ids are converted to trimmed strings before deduplicating."""
+    mocked.add(
+        responses.GET,
+        f"{API_URL}/items",
+        json=make_items("123", "MCO1"),
+        match=[responses.matchers.query_param_matcher({"ids": "123,MCO1"})],
+    )
+
+    result = client.items.get_many([123, "123", " MCO1 "])
+
+    assert [item["id"] for item in result] == ["123", "MCO1"]
+
+
+@pytest.mark.parametrize("item_ids", [b"MCO1", 5])
+def test_get_many_rejects_non_string_non_iterable(client, mocked, item_ids):
+    """Bytes and non-iterables are rejected with TypeError."""
+    with pytest.raises(TypeError):
+        client.items.get_many(item_ids)
+
+
+def test_get_many_rejects_empty_id(client, mocked):
+    """An empty id is rejected with ValueError."""
+    with pytest.raises(ValueError):
+        client.items.get_many([""])
+
+
+def test_get_many_rejects_empty_attributes(client, mocked):
+    """An attributes list that cleans down to nothing is rejected."""
+    with pytest.raises(ValueError):
+        client.items.get_many(["MCO1"], attributes=[" "])

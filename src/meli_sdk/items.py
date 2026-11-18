@@ -108,21 +108,64 @@ class Items:
             if not results or not scroll_id:
                 return
 
+    @staticmethod
+    def _normalize_item_ids(item_ids) -> list:
+        """Normalize ids to trimmed strings and deduplicate in first-seen order."""
+        if isinstance(item_ids, str):
+            item_ids = [item_ids]
+        elif isinstance(item_ids, (bytes, bytearray)) or not hasattr(item_ids, "__iter__"):
+            raise TypeError("item_ids must be a string or an iterable of ids")
+
+        normalized = []
+        seen = set()
+        for item_id in item_ids:
+            value = str(item_id).strip()
+            if not value:
+                raise ValueError("item ids must not be empty")
+            if value not in seen:
+                seen.add(value)
+                normalized.append(value)
+        return normalized
+
+    @staticmethod
+    def _normalize_attributes(attributes):
+        """Return a comma-separated attribute list that always includes id."""
+        if attributes is None:
+            return None
+
+        if isinstance(attributes, str):
+            names = attributes.split(",")
+        elif isinstance(attributes, (bytes, bytearray)) or not hasattr(attributes, "__iter__"):
+            raise TypeError("attributes must be a string or an iterable of names")
+        else:
+            names = attributes
+
+        cleaned = []
+        for name in names:
+            value = str(name).strip()
+            if value and value not in cleaned:
+                cleaned.append(value)
+
+        if not cleaned:
+            raise ValueError("attributes must contain at least one name")
+        if "id" not in cleaned:
+            cleaned.insert(0, "id")
+        return ",".join(cleaned)
+
     def get_many(self, item_ids, *, attributes=None, include_errors: bool = False) -> list:
         """Fetch several items through the multiget endpoint, in batches of 20."""
-        unique_ids = list(dict.fromkeys(item_ids))
+        unique_ids = self._normalize_item_ids(item_ids)
         if not unique_ids:
             return []
+
+        attributes_param = self._normalize_attributes(attributes)
 
         results = []
         for start in range(0, len(unique_ids), 20):
             batch = unique_ids[start : start + 20]
-            params = {"ids": ",".join(str(item_id) for item_id in batch)}
-            if attributes is not None:
-                if isinstance(attributes, str):
-                    params["attributes"] = attributes
-                else:
-                    params["attributes"] = ",".join(attributes)
+            params = {"ids": ",".join(batch)}
+            if attributes_param is not None:
+                params["attributes"] = attributes_param
 
             response = self.client.request("GET", "/items", params=params)
             if not isinstance(response, list):

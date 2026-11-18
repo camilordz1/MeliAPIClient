@@ -377,7 +377,8 @@ items = client.items.get_many(
 ```
 
 `get_many` descarta por defecto las entradas con error; pasa `include_errors=True` para recibir
-también los `{"code", "body"}` fallidos.
+también los `{"code", "body"}` fallidos. El SDK siempre solicita el atributo `id`, aunque no lo
+incluyas en `attributes`, para poder conservar el orden de entrada.
 
 ### 5. Métricas e Inteligencia (`client.metrics`)
 *   `metrics.get_seller_info(seller_id=None)`: Datos públicos del vendedor.

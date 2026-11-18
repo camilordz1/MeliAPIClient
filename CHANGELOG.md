@@ -25,6 +25,11 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   `items.validate` para validar una publicación sin crearla (las advertencias no bloquean).
 - `items.is_user_product_seller`, `seller_package_attributes` y las descripciones
   (`get_description`, `set_description` y su alias `update_description`).
+- `items.upload_picture` con conversión a JPEG (extra opcional `images` con Pillow) y
+  `items.add_picture` para enlazar la foto a un artículo. `to_jpeg_bytes` aplana transparencias,
+  agranda fotos pequeñas y nunca devuelve archivos de más de 10 MB.
+- Extra opcional `images` (`pip install "meli-python-sdk[images]"`) con `Pillow>=10` para la
+  conversión de fotos; el núcleo sigue funcionando sin Pillow.
 
 ### Cambiado
 - `items.create` rechaza antes de cualquier petición un payload con `title` y `family_name` a la

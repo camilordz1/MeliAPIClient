@@ -324,6 +324,30 @@ payload["attributes"] = seller_package_attributes(10, 20, 30, 500)
 una, cae automáticamente de `PUT` a `POST`. `items.get_description(item_id)` devuelve el payload
 crudo y `items.update_description` es un alias de `set_description`.
 
+### Fotos
+
+Instala el extra de imágenes: `pip install "meli-python-sdk[images]"`.
+
+`items.upload_picture(source, *, filename=None, convert="auto")` sube una foto y devuelve un
+`UploadedPicture`. `source` puede ser una ruta, `bytes` o un archivo binario.
+
+*   `convert="auto"` (por defecto): sube tal cual un JPEG o PNG de hasta 10 MB; cualquier otro
+    formato (WebP, GIF, BMP) o un archivo mayor se convierte a JPEG. **No** agranda una imagen
+    pequeña.
+*   `convert=True`: siempre convierte a JPEG y agranda con LANCZOS hasta que el lado menor tenga
+    500 px.
+*   `convert=False`: exige JPEG o PNG de hasta 10 MB; si no, lanza `ValueError`.
+
+Mercado Libre acepta JPG, JPEG y PNG de hasta 10 MB y exige un mínimo de 500×500 px; no agranda las
+imágenes, así que para fotos pequeñas usa `convert=True`. Después de subirla, enlázala al artículo:
+
+```python
+picture = client.items.upload_picture("fotos/camiseta.png", convert=True)
+client.items.add_picture("MCO123456789", picture.id)
+```
+
+Para reemplazar o reordenar fotos se envía `PUT /items/{id}` con la lista completa de `pictures`.
+
 ## Persistencia en Bases de Datos (Estrategia `CallbackTokenStorage`)
 
 Si quieres guardar los tokens de acceso en una base de datos (por ejemplo, en un modelo de Django, SQLAlchemy, o en Redis) en lugar de archivos JSON locales, utiliza `CallbackTokenStorage` inyectando funciones de carga y guardado:

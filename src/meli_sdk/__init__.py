@@ -17,6 +17,7 @@ from .models import (
     ShipmentCosts,
     ShipmentInfo,
     ShippingQuote,
+    UploadedPicture,
     ValidationCause,
     ValidationResult,
     parse_billing_info,
@@ -24,9 +25,11 @@ from .models import (
     parse_shipment,
     parse_shipment_costs,
     parse_shipping_quote,
+    parse_uploaded_picture,
     parse_validation_result,
 )
 from .orders import Order, Orders
+from .pictures import to_jpeg_bytes
 from .session import Session
 from .shipments import Ship, Shipments
 from .storage import (
@@ -71,4 +74,7 @@ __all__ = [
     "ValidationResult",
     "parse_validation_result",
     "seller_package_attributes",
+    "UploadedPicture",
+    "parse_uploaded_picture",
+    "to_jpeg_bytes",
 ]

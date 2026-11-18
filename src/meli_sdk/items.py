@@ -1,13 +1,24 @@
+import io
 import json
+import os
 from typing import List, Union
 
 from .exceptions import MeliAPIError
 from .models import (
     ListingPrice,
+    UploadedPicture,
     ValidationResult,
     _format_price,
     parse_listing_price,
+    parse_uploaded_picture,
     parse_validation_result,
+)
+from .pictures import (
+    JPEG_MAGIC,
+    MAX_UPLOAD_BYTES,
+    PNG_MAGIC,
+    read_picture_source,
+    to_jpeg_bytes,
 )
 
 
@@ -68,6 +79,58 @@ class Items:
     def get(self, item_id: str) -> dict:
         """Obtiene la información de un producto por su ID."""
         return self.client.request("GET", f"/items/{item_id}")
+
+    def upload_picture(
+        self, source, *, filename: str = None, convert="auto"
+    ) -> UploadedPicture:
+        """Upload a picture and return it.
+
+        ``convert="auto"`` uploads a JPEG or PNG up to 10 MB as-is and converts anything else to
+        JPEG; it does not upscale a small picture. Use ``convert=True`` for pictures under 500 px.
+        """
+        if convert == "auto":
+            mode = "auto"
+        elif convert is True:
+            mode = True
+        elif convert is False:
+            mode = False
+        else:
+            raise ValueError('convert must be "auto", True or False')
+
+        data, hint = read_picture_source(source)
+        name = filename or hint or "picture"
+        is_jpeg = data.startswith(JPEG_MAGIC)
+        is_png = data.startswith(PNG_MAGIC)
+        allowed = (is_jpeg or is_png) and len(data) <= MAX_UPLOAD_BYTES
+
+        if mode is False and not allowed:
+            raise ValueError(
+                "only JPEG or PNG pictures up to 10 MB can be uploaded without conversion"
+            )
+
+        if mode is True or (mode == "auto" and not allowed):
+            data = to_jpeg_bytes(data)
+            is_jpeg, is_png = True, False
+
+        extension = "jpg" if is_jpeg else "png"
+        mime = "image/jpeg" if is_jpeg else "image/png"
+        stem = os.path.splitext(name)[0] or "picture"
+        upload_name = f"{stem}.{extension}"
+
+        files = {"file": (upload_name, io.BytesIO(data), mime)}
+        payload = self.client.request(
+            "POST", "/pictures/items/upload", files=files
+        )
+        return parse_uploaded_picture(payload)
+
+    def add_picture(self, item_id: str, picture_id: str) -> dict:
+        """Link an uploaded picture to an item."""
+        if not isinstance(picture_id, str) or not picture_id.strip():
+            raise ValueError("picture_id must be a non-empty string")
+
+        return self.client.request(
+            "POST", f"/items/{item_id}/pictures", json={"id": picture_id}
+        )
 
     def get_description(self, item_id: str) -> dict:
         """Return the raw description payload of an item."""

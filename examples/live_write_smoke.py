@@ -11,6 +11,7 @@ addresses or prices.
 """
 
 import argparse
+import io
 import os
 import sys
 import time
@@ -167,6 +168,39 @@ def main() -> int:
             "items.set_description #2 (PUT update)",
             roundtrip("2", "Descripcion de prueba 2"),
         )
+
+        try:
+            from PIL import Image, ImageDraw
+        except ImportError:
+            print("SKIP  picture checks: Pillow is not installed")
+        else:
+
+            def picture_roundtrip():
+                before = len(item.get("pictures") or [])
+                image = Image.new("RGBA", (300, 300), (0, 0, 0, 0))
+                draw = ImageDraw.Draw(image)
+                draw.ellipse((50, 50, 250, 250), fill=(200, 30, 30, 255))
+                buffer = io.BytesIO()
+                image.save(buffer, format="PNG")
+
+                uploaded = client.items.upload_picture(
+                    buffer.getvalue(), filename="sdk-test.png", convert=True
+                )
+                print(
+                    f"      picture id prefix={uploaded.id.split('-')[0]} "
+                    f"max_size={uploaded.max_size}"
+                )
+                client.items.add_picture(args.item_id, uploaded.id)
+
+                updated = client.items.get(args.item_id)
+                pictures = updated.get("pictures") or []
+                if len(pictures) != before + 1:
+                    raise AssertionError("picture count did not grow by one")
+                if uploaded.id not in [picture.get("id") for picture in pictures]:
+                    raise AssertionError("uploaded picture is not linked")
+                return uploaded
+
+            check("items.upload_picture + add_picture", picture_roundtrip)
 
     passed = sum(ok for _, ok in results)
     print(f"\n{passed}/{len(results)} checks passed")

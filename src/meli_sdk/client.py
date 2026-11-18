@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 
 import requests
 
+from ._version import __version__
 from .exceptions import MeliAPIError, MeliConnectionError, MeliTokenExpiredError
 from .storage import TokenStorage
 
@@ -80,6 +81,19 @@ def _validate_max_backoff(value):
     return value
 
 
+def _validate_user_agent(user_agent):
+    """Return a validated User-Agent prefix, raising ValueError when not usable."""
+    if user_agent is None:
+        return None
+
+    message = f"user_agent must be a non-empty single-line string, got {user_agent!r}"
+    if not isinstance(user_agent, str) or not user_agent.strip():
+        raise ValueError(message)
+    if "\r" in user_agent or "\n" in user_agent:
+        raise ValueError(message)
+    return user_agent
+
+
 class MeliClient:
     """Cliente central de la API de Mercado Libre."""
 
@@ -96,6 +110,7 @@ class MeliClient:
         max_retries: int = 3,
         backoff_factor: float = 0.5,
         max_backoff: float = 60.0,
+        user_agent: str | None = None,
     ) -> None:
         self.client_id = client_id
         self.client_secret = client_secret
@@ -109,6 +124,7 @@ class MeliClient:
         self.max_retries = _validate_max_retries(max_retries)
         self.backoff_factor = _validate_backoff_factor(backoff_factor)
         self.max_backoff = _validate_max_backoff(max_backoff)
+        self.user_agent = _validate_user_agent(user_agent)
         self._sleep = time.sleep
         self._refresh_lock = threading.Lock()
 
@@ -191,8 +207,20 @@ class MeliClient:
                 response_text=response.text,
             ) from e
 
+    def _user_agent_header(self) -> str:
+        """Return the identifying User-Agent, with the custom prefix when set."""
+        default = f"meli-sdk/{__version__} python-requests/{requests.__version__}"
+        if self.user_agent:
+            return f"{self.user_agent} {default}"
+        return default
+
     def _send(self, method: str, url: str, **kwargs) -> requests.Response:
         """Send a request and retry the safe subset of transient failures."""
+        headers = dict(kwargs.get("headers") or {})
+        if not any(name.lower() == "user-agent" for name in headers):
+            headers["User-Agent"] = self._user_agent_header()
+        kwargs["headers"] = headers
+
         method_name = method.upper()
         idempotent = method_name in IDEMPOTENT_METHODS
         attempt = 0

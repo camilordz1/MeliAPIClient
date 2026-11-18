@@ -10,7 +10,19 @@ from .exceptions import (
 )
 from .items import Items
 from .metrics import Metrics
-from .models import Address, BillingInfo, ShipmentInfo, parse_billing_info, parse_shipment
+from .models import (
+    Address,
+    BillingInfo,
+    ListingPrice,
+    ShipmentCosts,
+    ShipmentInfo,
+    ShippingQuote,
+    parse_billing_info,
+    parse_listing_price,
+    parse_shipment,
+    parse_shipment_costs,
+    parse_shipping_quote,
+)
 from .orders import Order, Orders
 from .session import Session
 from .shipments import Ship, Shipments
@@ -44,6 +56,12 @@ __all__ = [
     "Address",
     "BillingInfo",
     "ShipmentInfo",
+    "ListingPrice",
+    "ShippingQuote",
+    "ShipmentCosts",
     "parse_billing_info",
     "parse_shipment",
+    "parse_listing_price",
+    "parse_shipping_quote",
+    "parse_shipment_costs",
 ]

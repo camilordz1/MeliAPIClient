@@ -1,0 +1,13 @@
+{
+  "currency_id": "COP",
+  "free_relist": false,
+  "listing_exposure": "high",
+  "listing_fee_amount": 0,
+  "listing_fee_details": {"fixed_fee": 0, "gross_amount": 0},
+  "listing_type_id": "gold_special",
+  "listing_type_name": "Oro Especial",
+  "requires_picture": true,
+  "sale_fee_amount": 11000,
+  "sale_fee_details": {"fixed_fee": 0, "gross_amount": 11000, "percentage_fee": 11.0},
+  "stop_time": "2026-12-31T00:00:00.000-05:00"
+}

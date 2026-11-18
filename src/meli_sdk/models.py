@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass, field
 from decimal import Decimal
 
@@ -36,6 +37,44 @@ class BillingInfo:
     @property
     def is_business(self) -> bool:
         return self.cust_type == "BU" or self.doc_type == "NIT"
+
+
+@dataclass(frozen=True)
+class ListingPrice:
+    listing_type_id: str | None
+    listing_type_name: str | None
+    currency_id: str | None
+    sale_fee_amount: Decimal
+    percentage_fee: Decimal | None
+    fixed_fee: Decimal | None
+    listing_fee_amount: Decimal
+    listing_exposure: str | None
+    requires_picture: bool | None
+    raw: dict = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class ShippingQuote:
+    list_cost: Decimal
+    currency_id: str | None
+    billable_weight: int | None
+    raw: dict = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class ShipmentCosts:
+    gross_amount: Decimal
+    buyer_cost: Decimal
+    seller_cost: Decimal
+    raw: dict = field(repr=False, compare=False)
+
+    @property
+    def buyer_paid_shipping(self) -> bool:
+        return self.buyer_cost > 0
+
+    @property
+    def seller_was_charged(self) -> bool:
+        return self.seller_cost > 0
 
 
 @dataclass(frozen=True)
@@ -282,3 +321,84 @@ def parse_shipment(payload: dict) -> ShipmentInfo:
         ),
         raw=data,
     )
+
+
+def parse_listing_price(entry: dict) -> ListingPrice:
+    """Parse one listing price entry into a ListingPrice."""
+    data = _as_dict(entry)
+    sale_details = _as_dict(data.get("sale_fee_details"))
+
+    sale_fee = data.get("sale_fee_amount")
+    listing_fee = data.get("listing_fee_amount")
+    percentage_fee = sale_details.get("percentage_fee")
+    fixed_fee = sale_details.get("fixed_fee")
+
+    return ListingPrice(
+        listing_type_id=_clean(data.get("listing_type_id")),
+        listing_type_name=_clean(data.get("listing_type_name")),
+        currency_id=_clean(data.get("currency_id")),
+        sale_fee_amount=_to_decimal(sale_fee) if sale_fee is not None else Decimal("0"),
+        percentage_fee=(
+            _to_decimal(percentage_fee) if percentage_fee is not None else None
+        ),
+        fixed_fee=_to_decimal(fixed_fee) if fixed_fee is not None else None,
+        listing_fee_amount=(
+            _to_decimal(listing_fee) if listing_fee is not None else Decimal("0")
+        ),
+        listing_exposure=_clean(data.get("listing_exposure")),
+        requires_picture=data.get("requires_picture"),
+        raw=data,
+    )
+
+
+def parse_shipping_quote(payload: dict) -> ShippingQuote:
+    """Parse a free-shipping quote into a ShippingQuote."""
+    data = _as_dict(payload)
+    coverage = _as_dict(_as_dict(data.get("coverage")).get("all_country"))
+    list_cost = coverage.get("list_cost")
+
+    return ShippingQuote(
+        list_cost=_to_decimal(list_cost) if list_cost is not None else Decimal("0"),
+        currency_id=_clean(coverage.get("currency_id")),
+        billable_weight=coverage.get("billable_weight"),
+        raw=data,
+    )
+
+
+def parse_shipment_costs(payload: dict) -> ShipmentCosts:
+    """Parse shipment costs, summing what every sender was charged."""
+    data = _as_dict(payload)
+    receiver = _as_dict(data.get("receiver"))
+
+    seller_cost = Decimal("0")
+    for sender in data.get("senders") or []:
+        if isinstance(sender, dict) and sender.get("cost") is not None:
+            seller_cost += _to_decimal(sender["cost"])
+
+    gross_amount = data.get("gross_amount")
+    buyer_cost = receiver.get("cost")
+
+    return ShipmentCosts(
+        gross_amount=_to_decimal(gross_amount) if gross_amount is not None else Decimal("0"),
+        buyer_cost=_to_decimal(buyer_cost) if buyer_cost is not None else Decimal("0"),
+        seller_cost=seller_cost,
+        raw=data,
+    )
+
+
+def _format_price(value) -> str:
+    """Validate a positive price and format it without exponent notation."""
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+        raise ValueError(f"price must be a positive number, got {value!r}")
+
+    if isinstance(value, Decimal):
+        if not value.is_finite() or value <= 0:
+            raise ValueError(f"price must be a positive number, got {value!r}")
+        return format(value, "f")
+
+    if isinstance(value, float) and (not math.isfinite(value) or value <= 0):
+        raise ValueError(f"price must be a positive number, got {value!r}")
+
+    if value <= 0:
+        raise ValueError(f"price must be a positive number, got {value!r}")
+    return str(value)

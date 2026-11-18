@@ -1,0 +1,9 @@
+{
+  "coverage": {
+    "all_country": {
+      "list_cost": 8900,
+      "currency_id": "COP",
+      "billable_weight": 500
+    }
+  }
+}

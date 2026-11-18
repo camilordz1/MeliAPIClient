@@ -1,3 +1,4 @@
+import math
 import time
 
 import requests
@@ -17,13 +18,18 @@ def _validate_timeout(timeout):
         raise ValueError(message)
 
     if isinstance(timeout, (int, float)):
-        if timeout <= 0:
+        if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError(message)
         return timeout
 
     if isinstance(timeout, tuple) and len(timeout) == 2:
         for value in timeout:
-            if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+            if (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value <= 0
+            ):
                 raise ValueError(message)
         return timeout
 

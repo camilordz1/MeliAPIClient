@@ -74,7 +74,21 @@ def test_refresh_uses_client_timeout(storage, mocked):
 
 
 @pytest.mark.parametrize(
-    "timeout", [0, -1, True, "30", None, (1,), (1, 0), (1, 2, 3)]
+    "timeout",
+    [
+        0,
+        -1,
+        True,
+        "30",
+        None,
+        (1,),
+        (1, 0),
+        (1, 2, 3),
+        float("nan"),
+        float("inf"),
+        (1, float("inf")),
+        (float("nan"), 5),
+    ],
 )
 def test_invalid_timeout_raises_value_error(storage, timeout):
     """Invalid timeout values are rejected when the client is built."""

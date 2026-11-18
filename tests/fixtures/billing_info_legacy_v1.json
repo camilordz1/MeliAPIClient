@@ -1,0 +1,23 @@
+{
+  "billing_info": {
+    "doc_type": "cc",
+    "doc_number": "1020304050",
+    "additional_info": [
+      {"type": "FIRST_NAME", "value": "Carlos"},
+      {"type": "LAST_NAME", "value": "Perez"},
+      {"type": "DOC_TYPE", "value": "cc"},
+      {"type": "DOC_NUMBER", "value": "1020304050"},
+      {"type": "STREET_NAME", "value": "Carrera 7"},
+      {"type": "STREET_NUMBER", "value": "45-10"},
+      {"type": "CITY_NAME", "value": "Bogota"},
+      {"type": "STATE_NAME", "value": "Cundinamarca"},
+      {"type": "ZIP_CODE", "value": "110111"},
+      {"type": "TAXPAYER_TYPE", "value": "Persona natural"},
+      {"type": "COMMENT", "value": "Oficina 201"},
+      {"type": "BUSINESS_NAME", "value": ""},
+      {"type": "LEGAL_NAME", "value": ""},
+      {"type": "COMPANY_NAME", "value": ""},
+      {"type": "CITIZEN_ID", "value": "1020304050"}
+    ]
+  }
+}

@@ -5,6 +5,21 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
 [versionado semántico](https://semver.org/lang/es/). Mientras el SDK esté en versión alfa
 (`1.0.0aN`), una versión nueva puede traer cambios incompatibles.
 
+## [Sin publicar]
+
+### Añadido
+- Modelos normalizados `Address`, `BillingInfo` y `ShipmentInfo`, y los parsers públicos
+  `parse_billing_info` y `parse_shipment`.
+- `bills.get_normalized(order_id)`: usa el endpoint vigente
+  `GET /orders/billing-info/{site}/{id}` y cae automáticamente al endpoint antiguo (v2/v1) cuando
+  falta el id o el nuevo responde 404.
+- `shipments.get_normalized(shipment_id)`: devuelve estado, seguimiento, costo como `Decimal` y la
+  dirección de entrega.
+
+### Obsoleto
+- `bills.get_billing_info`: el endpoint upstream `/orders/{id}/billing_info` está obsoleto; usa
+  `bills.get_normalized`.
+
 ## [1.0.0a1] - 2026-11-17
 
 ### Añadido

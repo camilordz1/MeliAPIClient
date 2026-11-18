@@ -1,0 +1,23 @@
+{
+  "id": "BI-0001",
+  "site_id": "MCO",
+  "seller": {"cust_id": "SELLER-1"},
+  "buyer": {
+    "cust_id": "BUYER-1",
+    "billing_info": {
+      "name": "Ana",
+      "last_name": "Gomez",
+      "identification": {"type": "CC", "number": "1020304050"},
+      "address": {
+        "street_name": "Calle Falsa",
+        "street_number": "123",
+        "city_name": "Bogota",
+        "comment": "Apto 101",
+        "neighborhood": "Centro",
+        "country_id": "CO",
+        "state": {"code": "DC", "name": "Bogota D.C."}
+      },
+      "attributes": {"cust_type": "CO", "normalized": "true"}
+    }
+  }
+}

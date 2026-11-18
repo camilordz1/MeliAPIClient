@@ -10,6 +10,7 @@ from .exceptions import (
 )
 from .items import Items
 from .metrics import Metrics
+from .models import Address, BillingInfo, ShipmentInfo, parse_billing_info, parse_shipment
 from .orders import Order, Orders
 from .session import Session
 from .shipments import Ship, Shipments
@@ -40,4 +41,9 @@ __all__ = [
     "MeliAPIError",
     "MeliTokenExpiredError",
     "MeliConnectionError",
+    "Address",
+    "BillingInfo",
+    "ShipmentInfo",
+    "parse_billing_info",
+    "parse_shipment",
 ]

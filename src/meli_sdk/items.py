@@ -1,6 +1,7 @@
 from typing import List, Union
 
 from .exceptions import MeliAPIError
+from .models import ListingPrice, _format_price, parse_listing_price
 
 
 class Items:
@@ -29,6 +30,99 @@ class Items:
     def update_stock(self, item_id: str, available_quantity: int) -> dict:
         """Método de conveniencia para actualizar el stock/cantidad disponible de un producto."""
         return self.update(item_id, {"available_quantity": available_quantity})
+
+    def get_listing_prices(
+        self,
+        price,
+        *,
+        category_id: str = None,
+        site_id: str = "MCO",
+        currency_id: str = None,
+        logistic_type: str = None,
+        shipping_mode: str = None,
+        billable_weight: int = None,
+    ) -> list:
+        """Return the listing price options for a price, always as a list."""
+        params = {"price": _format_price(price)}
+        self._add_listing_filters(
+            params,
+            category_id=category_id,
+            currency_id=currency_id,
+            logistic_type=logistic_type,
+            shipping_mode=shipping_mode,
+            billable_weight=billable_weight,
+        )
+
+        response = self.client.request(
+            "GET", f"/sites/{site_id}/listing_prices", params=params
+        )
+        if isinstance(response, dict):
+            return [parse_listing_price(response)]
+        return [parse_listing_price(entry) for entry in response]
+
+    def get_listing_price(
+        self,
+        price,
+        listing_type_id: str,
+        *,
+        category_id: str = None,
+        site_id: str = "MCO",
+        currency_id: str = None,
+        logistic_type: str = None,
+        shipping_mode: str = None,
+        billable_weight: int = None,
+    ) -> ListingPrice:
+        """Return the listing price for one listing type."""
+        params = {
+            "price": _format_price(price),
+            "listing_type_id": listing_type_id,
+        }
+        self._add_listing_filters(
+            params,
+            category_id=category_id,
+            currency_id=currency_id,
+            logistic_type=logistic_type,
+            shipping_mode=shipping_mode,
+            billable_weight=billable_weight,
+        )
+
+        response = self.client.request(
+            "GET", f"/sites/{site_id}/listing_prices", params=params
+        )
+        if isinstance(response, dict):
+            return parse_listing_price(response)
+
+        for entry in response:
+            if isinstance(entry, dict) and entry.get("listing_type_id") == listing_type_id:
+                return parse_listing_price(entry)
+
+        raise MeliAPIError(
+            message=f"No listing price found for listing type {listing_type_id!r}",
+            status_code=200,
+            response_text=str(response),
+        )
+
+    @staticmethod
+    def _add_listing_filters(
+        params: dict,
+        *,
+        category_id,
+        currency_id,
+        logistic_type,
+        shipping_mode,
+        billable_weight,
+    ) -> None:
+        """Add the optional listing price filters to the query params."""
+        if category_id is not None:
+            params["category_id"] = category_id
+        if currency_id is not None:
+            params["currency_id"] = currency_id
+        if logistic_type is not None:
+            params["logistic_type"] = logistic_type
+        if shipping_mode is not None:
+            params["shipping_mode"] = shipping_mode
+        if billable_weight is not None:
+            params["billable_weight"] = billable_weight
 
     def search(
         self,

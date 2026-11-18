@@ -4,7 +4,19 @@ from pathlib import Path
 
 import pytest
 
-from meli_sdk.models import Address, BillingInfo, ShipmentInfo, parse_billing_info, parse_shipment
+from meli_sdk.models import (
+    Address,
+    BillingInfo,
+    ListingPrice,
+    ShipmentCosts,
+    ShipmentInfo,
+    ShippingQuote,
+    parse_billing_info,
+    parse_listing_price,
+    parse_shipment,
+    parse_shipment_costs,
+    parse_shipping_quote,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -240,3 +252,70 @@ def test_parse_legacy_v1_person_name_wins_over_billing_name():
 
     assert info.name == "Carlos"
     assert info.last_name == "Perez"
+
+
+def test_parse_listing_price():
+    """A listing price entry is normalized with Decimal money."""
+    info = parse_listing_price(load("listing_price.json"))
+
+    assert isinstance(info, ListingPrice)
+    assert info.listing_type_id == "gold_special"
+    assert info.listing_type_name == "Oro Especial"
+    assert info.currency_id == "COP"
+    assert info.sale_fee_amount == Decimal("11000")
+    assert info.percentage_fee == Decimal("11.0")
+    assert info.fixed_fee == Decimal("0")
+    assert info.listing_fee_amount == Decimal("0")
+    assert info.listing_exposure == "high"
+    assert info.requires_picture is True
+
+
+def test_parse_listing_price_tolerates_missing_details():
+    """Missing amounts default to zero and missing details to None."""
+    info = parse_listing_price({"listing_type_id": "free"})
+
+    assert info.sale_fee_amount == Decimal("0")
+    assert info.listing_fee_amount == Decimal("0")
+    assert info.percentage_fee is None
+    assert info.fixed_fee is None
+    assert info.requires_picture is None
+
+
+def test_parse_shipping_quote():
+    """A free-shipping quote is normalized."""
+    quote = parse_shipping_quote(load("free_shipping_quote.json"))
+
+    assert isinstance(quote, ShippingQuote)
+    assert quote.list_cost == Decimal("8900")
+    assert quote.currency_id == "COP"
+    assert quote.billable_weight == 500
+
+
+def test_parse_shipping_quote_missing_coverage_defaults_zero():
+    """A quote without coverage defaults the cost to zero."""
+    quote = parse_shipping_quote({})
+
+    assert quote.list_cost == Decimal("0")
+    assert quote.currency_id is None
+    assert quote.billable_weight is None
+
+
+def test_parse_shipment_costs():
+    """Shipment costs sum the senders and expose the convenience properties."""
+    costs = parse_shipment_costs(load("shipment_costs.json"))
+
+    assert isinstance(costs, ShipmentCosts)
+    assert costs.gross_amount == Decimal("8900")
+    assert costs.buyer_cost == Decimal("5900")
+    assert costs.seller_cost == Decimal("3000")
+    assert costs.buyer_paid_shipping is True
+    assert costs.seller_was_charged is True
+
+
+def test_parse_shipment_costs_without_senders():
+    """Without senders the seller was not charged."""
+    costs = parse_shipment_costs({"gross_amount": 100, "receiver": {"cost": 100}})
+
+    assert costs.seller_cost == Decimal("0")
+    assert costs.seller_was_charged is False
+    assert costs.buyer_paid_shipping is True

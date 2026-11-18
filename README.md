@@ -269,6 +269,32 @@ inventan valores por defecto. Cada objeto conserva la respuesta completa en `raw
 
 ---
 
+### Comisiones y costos de envío
+
+`items.get_listing_prices(price, *, category_id=None, site_id="MCO", ...)` devuelve una lista de
+`ListingPrice` con la comisión de venta (`sale_fee_amount`, `percentage_fee`, `fixed_fee`) y la de
+publicación. `items.get_listing_price(price, listing_type_id, ...)` devuelve solo la opción pedida.
+
+`shipments.get_free_shipping_quote(...)` cotiza el envío gratis: con `item_id=...` o con
+`dimensions=` (una tupla `(alto, ancho, largo, peso)` o una cadena `"HxWxL,G"`). El peso va en
+gramos enteros. Con `dimensions` también son obligatorios `item_price` y `listing_type_id`, porque
+sin ellos la cotización puede volver en cero.
+
+```python
+prices = client.items.get_listing_prices(100000, category_id="MCO1430")
+gold = client.items.get_listing_price(100000, "gold_special", category_id="MCO1430")
+
+quote = client.shipments.get_free_shipping_quote(
+    dimensions=(10, 20, 30, 500),
+    item_price=100000,
+    listing_type_id="gold_special",
+    logistic_type="xd_drop_off",
+)
+```
+
+`shipments.get_costs(shipment_id)` es la fuente para conciliar: `buyer_cost` es lo que pagó el
+comprador y `seller_cost` la suma de lo que se le cobró al vendedor.
+
 ## Persistencia en Bases de Datos (Estrategia `CallbackTokenStorage`)
 
 Si quieres guardar los tokens de acceso en una base de datos (por ejemplo, en un modelo de Django, SQLAlchemy, o en Redis) en lugar de archivos JSON locales, utiliza `CallbackTokenStorage` inyectando funciones de carga y guardado:

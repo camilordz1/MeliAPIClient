@@ -1,0 +1,33 @@
+{
+  "gross_amount": 8900,
+  "base_exchange": null,
+  "receiver": {
+    "user_id": 300001,
+    "cost": 5900,
+    "save": 0,
+    "compensation": 0,
+    "discounts": [{"type": "coupon", "rate": 10, "promoted_amount": 500}],
+    "fees": [],
+    "cost_details": []
+  },
+  "senders": [
+    {
+      "user_id": 12345,
+      "cost": 2000,
+      "save": 0,
+      "compensation": 0,
+      "charges": {"charge_flex": 100},
+      "discounts": [{"type": "promo", "rate": 5.5, "promoted_amount": 100}],
+      "fees": []
+    },
+    {
+      "user_id": 12345,
+      "cost": 1000,
+      "save": 0,
+      "compensation": 0,
+      "charges": {"charge_flex": 0},
+      "discounts": [],
+      "fees": []
+    }
+  ]
+}

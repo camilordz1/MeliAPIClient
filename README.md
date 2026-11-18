@@ -295,6 +295,35 @@ quote = client.shipments.get_free_shipping_quote(
 `shipments.get_costs(shipment_id)` es la fuente para conciliar: `buyer_cost` es lo que pagó el
 comprador y `seller_cost` la suma de lo que se le cobró al vendedor.
 
+### Publicaciones (user products y descripciones)
+
+Si el vendedor tiene la etiqueta `user_product_seller`, la API exige `family_name` y rechaza
+`title`; en caso contrario usa `title`. `items.is_user_product_seller()` consulta la etiqueta:
+
+```python
+if client.items.is_user_product_seller():
+    payload["family_name"] = "Camisetas de algodon"
+else:
+    payload["title"] = "Camiseta de algodon"
+```
+
+`items.validate(payload)` envía `POST /items/validate` y devuelve un `ValidationResult` sin crear
+nada. Un 400 con solo advertencias significa que la publicación es válida: `result.valid` es `True`
+y las advertencias quedan en `result.warnings`; los errores de bloqueo quedan en `result.errors`.
+
+Para vendedores de user products, las dimensiones del paquete se envían con
+`seller_package_attributes(alto, ancho, largo, peso)`, con enteros en `cm` y gramos:
+
+```python
+from meli_sdk import seller_package_attributes
+
+payload["attributes"] = seller_package_attributes(10, 20, 30, 500)
+```
+
+`items.set_description(item_id, plain_text)` actualiza la descripción; si el artículo aún no tiene
+una, cae automáticamente de `PUT` a `POST`. `items.get_description(item_id)` devuelve el payload
+crudo y `items.update_description` es un alias de `set_description`.
+
 ## Persistencia en Bases de Datos (Estrategia `CallbackTokenStorage`)
 
 Si quieres guardar los tokens de acceso en una base de datos (por ejemplo, en un modelo de Django, SQLAlchemy, o en Redis) en lugar de archivos JSON locales, utiliza `CallbackTokenStorage` inyectando funciones de carga y guardado:

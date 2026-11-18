@@ -8,7 +8,7 @@ from .exceptions import (
     MeliError,
     MeliTokenExpiredError,
 )
-from .items import Items
+from .items import Items, seller_package_attributes
 from .metrics import Metrics
 from .models import (
     Address,
@@ -70,4 +70,5 @@ __all__ = [
     "ValidationCause",
     "ValidationResult",
     "parse_validation_result",
+    "seller_package_attributes",
 ]

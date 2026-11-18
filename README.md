@@ -235,6 +235,34 @@ vacío y guarda el token igual que la renovación.
 Si quieres identificarte ante Mercado Libre, pasa `user_agent="TuApp/1.0"`: el SDK lo antepone al
 valor por defecto `meli-sdk/<versión> python-requests/<versión>`.
 
+### Datos normalizados
+
+`bills.get_normalized(order_id)` devuelve un `BillingInfo` con los datos de facturación del
+comprador. Primero lee `buyer.billing_info.id` de la orden y consulta el endpoint vigente
+`GET /orders/billing-info/{site_id}/{id}`; si no hay id o el endpoint responde 404, cae al endpoint
+antiguo `/orders/{id}/billing_info` (v2 y luego v1). El endpoint antiguo está
+[obsoleto](https://developers.mercadolibre.com.ar/en_us/billing-info) y Mercado Libre lo mantiene
+solo por un tiempo limitado.
+
+```python
+billing = client.bills.get_normalized(order_id)
+if billing is not None:
+    print(billing.full_name, billing.doc_type, billing.doc_number)
+    print(billing.address.city, billing.address.zip_code)
+```
+
+`shipments.get_normalized(shipment_id)` devuelve un `ShipmentInfo` con el estado, el seguimiento, el
+costo (un `Decimal`) y la dirección de entrega:
+
+```python
+shipment = client.shipments.get_normalized(shipment_id)
+print(shipment.status, shipment.shipping_cost, shipment.currency_id)
+```
+
+Los campos de texto pueden ser `None` (por ejemplo mientras un documento está en proceso) y no se
+inventan valores por defecto. Cada objeto conserva la respuesta completa en `raw`, que no aparece en
+`repr` para no exponer datos personales.
+
 ---
 
 ## Persistencia en Bases de Datos (Estrategia `CallbackTokenStorage`)

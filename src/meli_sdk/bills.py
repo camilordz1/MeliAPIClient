@@ -4,6 +4,7 @@ from typing import Union
 
 from .actions import Actions
 from .exceptions import MeliAPIError
+from .models import BillingInfo, parse_billing_info
 
 DEFAULT_FILENAME = "factura.pdf"
 PDF_MAGIC = b"%PDF-"
@@ -17,8 +18,60 @@ class Bills:
         self.client = client
 
     def get_billing_info(self, order_id: Union[int, str]) -> dict:
-        """Obtiene la información de facturación vinculada a una orden."""
+        """Obtiene la información de facturación vinculada a una orden.
+
+        El endpoint upstream está obsoleto; usa ``get_normalized`` para la versión vigente.
+        """
         return self.client.request("GET", f"/orders/{order_id}/billing_info")
+
+    def get_normalized(
+        self, order_id: Union[int, str], *, order: dict = None
+    ) -> BillingInfo | None:
+        """Return the normalized billing info of an order, or None when there is none.
+
+        Uses ``buyer.billing_info.id`` from the order against the new endpoint, falling back to
+        the deprecated legacy endpoint (v2, then v1) when the id is missing or the new endpoint
+        returns 404.
+        """
+        if order is None:
+            order = self.client.orders.get(order_id)
+
+        order_data = order if isinstance(order, dict) else {}
+        site_id = order_data.get("site_id") or "MCO"
+        buyer = order_data.get("buyer") or {}
+        billing_ref = buyer.get("billing_info") or {}
+        billing_id = billing_ref.get("id")
+
+        if billing_id:
+            try:
+                payload = self.client.request(
+                    "GET", f"/orders/billing-info/{site_id}/{billing_id}"
+                )
+            except MeliAPIError as e:
+                if e.status_code != 404:
+                    raise
+            else:
+                info = parse_billing_info(payload, source="billing-info")
+                if info is not None:
+                    return info
+
+        try:
+            payload = self.client.request(
+                "GET",
+                f"/orders/{order_id}/billing_info",
+                headers={"x-version": "2"},
+            )
+        except MeliAPIError as e:
+            if e.status_code == 404:
+                return None
+            raise
+
+        buyer_payload = payload.get("buyer") if isinstance(payload, dict) else None
+        if isinstance(buyer_payload, dict) and isinstance(
+            buyer_payload.get("billing_info"), dict
+        ):
+            return parse_billing_info(payload, source="legacy-v2")
+        return parse_billing_info(payload, source="legacy-v1")
 
     def has_fiscal_document(self, pack_id: Union[int, str]) -> bool:
         """Comprueba si un paquete de órdenes tiene un documento fiscal adjunto."""

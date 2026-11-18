@@ -1,6 +1,7 @@
 from typing import Union
 
 from .actions import Actions
+from .models import ShipmentInfo, parse_shipment
 
 
 class Shipments:
@@ -13,6 +14,12 @@ class Shipments:
     def get(self, shipment_id: Union[int, str]) -> dict:
         """Obtiene información de un envío específico."""
         return self.client.request("GET", f"/shipments/{shipment_id}")
+
+    def get_normalized(self, shipment_id: Union[int, str]) -> ShipmentInfo:
+        """Return a normalized view of the shipment."""
+        return parse_shipment(
+            self.client.request("GET", f"/shipments/{shipment_id}")
+        )
 
 
 # --- Capa de Compatibilidad Clásica (Legacy) ---

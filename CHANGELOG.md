@@ -32,11 +32,16 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   una sola vez y los hilos que esperan reutilizan el token nuevo.
 - Las peticiones y la renovación del token usan una `requests.Session` persistente y un timeout
   por defecto de 30 segundos.
+- El rango de fechas de `orders.search`/`orders.date` se calcula en hora de Colombia (`-05:00`) y
+  valida que `year` y `month` se pasen juntos y que los días estén dentro del mes.
 - `upload_fiscal_document` envía el documento con `Content-Type: application/pdf`, que Mercado Libre
   exige para aceptar la factura.
 - `has_fiscal_document` ya no devuelve `True` cuando `fiscal_documents` está vacío.
 
 ### Cambios incompatibles
+- El offset por defecto de las búsquedas de órdenes cambia de `-00:00` a `-05:00`, así que los
+  resultados en los bordes de mes (31 de enero por la noche y 1 de marzo de madrugada) cambian.
+  Usa `utc_offset=` para restaurar otro rango.
 - El segundo parámetro de `upload_fiscal_document` se renombra de `file_path` a `document`. Las
   llamadas posicionales siguen funcionando; las que usan `file_path=` deben actualizarse.
 

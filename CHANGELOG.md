@@ -7,6 +7,8 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
 
 ## [Sin publicar]
 
+## [1.0.0a2] - 2026-11-18
+
 ### Añadido
 - Modelos normalizados `Address`, `BillingInfo` y `ShipmentInfo`, y los parsers públicos
   `parse_billing_info` y `parse_shipment`.

@@ -13,6 +13,9 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   cliente.
 - `MeliClient.close()` y el protocolo de context manager (`with MeliClient(...) as client:`) para
   cerrar la sesión cuando el cliente es su dueño.
+- Reintentos automáticos y seguros: `429` para todos los métodos, `500`/`502`/`503`/`504` y errores
+  de conexión solo para métodos idempotentes, con backoff exponencial y soporte de `Retry-After`
+  (`max_retries`, `backoff_factor` y `max_backoff` configurables).
 
 ### Corregido
 - Las peticiones y la renovación del token usan una `requests.Session` persistente y un timeout

@@ -30,7 +30,9 @@ def storage(valid_token):
 @pytest.fixture
 def client(storage):
     """Return a MeliClient wired to the in-memory token storage."""
-    return MeliClient(client_id="cid", client_secret="csecret", token_storage=storage)
+    client = MeliClient(client_id="cid", client_secret="csecret", token_storage=storage)
+    client._sleep = lambda seconds: None
+    return client
 
 
 @pytest.fixture

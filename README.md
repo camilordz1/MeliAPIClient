@@ -126,6 +126,31 @@ with MeliClient(
 
 El timeout también se puede sobrescribir por llamada con `client.request(..., timeout=5)`.
 
+### Reintentos seguros
+
+El cliente reintenta automáticamente los fallos transitorios sin duplicar operaciones:
+
+| Respuesta | Métodos que se reintentan |
+| --- | --- |
+| `429 Too Many Requests` | todos |
+| `500`, `502`, `503`, `504` | solo idempotentes: `GET`, `HEAD`, `OPTIONS`, `PUT`, `DELETE` |
+| `ConnectionError` / `Timeout` | solo idempotentes |
+| cualquier otra (4xx, otros 5xx) | nunca |
+
+La espera usa el encabezado `Retry-After` cuando está presente (segundos o fecha HTTP) y, si no,
+un backoff exponencial. Los valores se limitan a `max_backoff`:
+
+```python
+client = MeliClient(
+    client_id="TU_CLIENT_ID",
+    client_secret="TU_CLIENT_SECRET",
+    token_storage=storage,
+    max_retries=3,       # 0 desactiva los reintentos
+    backoff_factor=0.5,  # espera base: backoff_factor * 2 ** intento
+    max_backoff=60.0,    # tope de espera en segundos
+)
+```
+
 ---
 
 ## Persistencia en Bases de Datos (Estrategia `CallbackTokenStorage`)

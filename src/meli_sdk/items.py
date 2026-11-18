@@ -1,5 +1,7 @@
 from typing import List, Union
 
+from .exceptions import MeliAPIError
+
 
 class Items:
     """Clase para interactuar con los recursos de Publicaciones de Productos (Items) de
@@ -47,6 +49,150 @@ class Items:
             params.update(extra_params)
 
         return self.client.request("GET", f"/users/{seller_id}/items/search", params=params)
+
+    def iter_all(
+        self,
+        seller_id: int = None,
+        *,
+        page_size: int = 100,
+        extra_params: dict = None,
+    ):
+        """Yield the seller's item IDs using scan mode, in API order.
+
+        This yields IDs; use ``get_many`` to fetch the item details. The scan ``scroll_id``
+        expires after 5 minutes, so consume the generator without long pauses.
+
+        ``page_size`` must be an int between 1 and 100 and ``extra_params`` must not contain
+        ``offset``, ``limit``, ``search_type`` or ``scroll_id``; both are validated on the first
+        ``next()``.
+        """
+        if (
+            isinstance(page_size, bool)
+            or not isinstance(page_size, int)
+            or not 1 <= page_size <= 100
+        ):
+            raise ValueError("page_size must be an int between 1 and 100")
+
+        pagination_keys = {"offset", "limit", "search_type", "scroll_id"}
+        if extra_params and pagination_keys.intersection(extra_params):
+            raise ValueError(
+                "extra_params must not contain 'offset', 'limit', 'search_type' or 'scroll_id'"
+            )
+
+        if seller_id is None:
+            token_data = self.client.token_storage.load_token()
+            seller_id = token_data.get("user_id")
+            if not seller_id:
+                raise ValueError(
+                    "seller_id es requerido o no se pudo obtener del token activo."
+                )
+
+        url = f"/users/{seller_id}/items/search"
+        params = {"search_type": "scan", "limit": page_size}
+        if extra_params:
+            params.update(extra_params)
+
+        scroll_id = None
+        while True:
+            current = dict(params)
+            if scroll_id is not None:
+                current["scroll_id"] = scroll_id
+
+            page = self.client.request("GET", url, params=current)
+            results = page.get("results") or []
+
+            for item_id in results:
+                yield item_id
+
+            scroll_id = page.get("scroll_id")
+            if not results or not scroll_id:
+                return
+
+    @staticmethod
+    def _normalize_item_ids(item_ids) -> list:
+        """Normalize ids to trimmed strings and deduplicate in first-seen order."""
+        if isinstance(item_ids, str):
+            item_ids = [item_ids]
+        elif isinstance(item_ids, (bytes, bytearray)) or not hasattr(item_ids, "__iter__"):
+            raise TypeError("item_ids must be a string or an iterable of ids")
+
+        normalized = []
+        seen = set()
+        for item_id in item_ids:
+            value = str(item_id).strip()
+            if not value:
+                raise ValueError("item ids must not be empty")
+            if value not in seen:
+                seen.add(value)
+                normalized.append(value)
+        return normalized
+
+    @staticmethod
+    def _normalize_attributes(attributes):
+        """Return a comma-separated attribute list that always includes id."""
+        if attributes is None:
+            return None
+
+        if isinstance(attributes, str):
+            names = attributes.split(",")
+        elif isinstance(attributes, (bytes, bytearray)) or not hasattr(attributes, "__iter__"):
+            raise TypeError("attributes must be a string or an iterable of names")
+        else:
+            names = attributes
+
+        cleaned = []
+        for name in names:
+            value = str(name).strip()
+            if value and value not in cleaned:
+                cleaned.append(value)
+
+        if not cleaned:
+            raise ValueError("attributes must contain at least one name")
+        if "id" not in cleaned:
+            cleaned.insert(0, "id")
+        return ",".join(cleaned)
+
+    def get_many(self, item_ids, *, attributes=None, include_errors: bool = False) -> list:
+        """Fetch several items through the multiget endpoint, in batches of 20."""
+        unique_ids = self._normalize_item_ids(item_ids)
+        if not unique_ids:
+            return []
+
+        attributes_param = self._normalize_attributes(attributes)
+
+        results = []
+        for start in range(0, len(unique_ids), 20):
+            batch = unique_ids[start : start + 20]
+            params = {"ids": ",".join(batch)}
+            if attributes_param is not None:
+                params["attributes"] = attributes_param
+
+            response = self.client.request("GET", "/items", params=params)
+            if not isinstance(response, list):
+                raise MeliAPIError(
+                    message="Unexpected non-list response from the items multiget",
+                    status_code=200,
+                    response_text=str(response),
+                )
+
+            if include_errors:
+                results.extend(response)
+                continue
+
+            # The API may return entries in another order; match them by body id.
+            entries_by_id = {}
+            for entry in response:
+                if entry.get("code") != 200:
+                    continue
+                body = entry.get("body")
+                if isinstance(body, dict):
+                    entries_by_id[body.get("id")] = body
+            for item_id in batch:
+                body = entries_by_id.get(item_id)
+                if body is not None:
+                    results.append(body)
+
+        return results
 
     def _format_ids(self, item_ids: Union[str, List[str]]) -> str:
         """Formatea una lista o cadena de IDs de items en un formato separado por comas."""

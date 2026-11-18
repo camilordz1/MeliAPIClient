@@ -29,6 +29,10 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
 - `orders.iter_all(...)`: generador que recorre todas las páginas de órdenes y acepta `status`,
   `sort`, `utc_offset`, `page_size` y `extra_params`.
 - `orders.search` acepta `status`, `sort` (`date_asc`/`date_desc`), `utc_offset` y `extra_params`.
+- `items.iter_all(...)`: generador de IDs de publicaciones con `search_type=scan`, que sigue el
+  `scroll_id` (válido 5 minutos) y evita el límite de 1000 resultados del paginado por offset.
+- `items.get_many(...)`: multiget de publicaciones en lotes de 20, con `attributes=` opcional y
+  `include_errors=` para conservar las entradas fallidas.
 
 ### Corregido
 - La carrera entre renovaciones concurrentes ya no invalida la sesión: el refresh token se canjea

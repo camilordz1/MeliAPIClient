@@ -470,8 +470,17 @@ def parse_validation_result(status_code: int, payload: dict | None) -> Validatio
                 cause_id=None,
                 references=(),
             )
-            return ValidationResult(
-                valid=False, errors=(synthesized,), warnings=(), raw=data
+        else:
+            synthesized = ValidationCause(
+                type="error",
+                code="validation.unknown",
+                message="validation failed without causes",
+                department=None,
+                cause_id=None,
+                references=(),
             )
+        return ValidationResult(
+            valid=False, errors=(synthesized,), warnings=(), raw=data
+        )
 
     return ValidationResult(valid=not errors, errors=errors, warnings=warnings, raw=data)

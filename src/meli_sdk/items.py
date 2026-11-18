@@ -93,7 +93,7 @@ class Items:
         return self.client.request("POST", f"/items/{item_id}/description", json=body)
 
     def update_description(self, item_id: str, plain_text: str) -> dict:
-        """Alias of set_description, kept for the F4-02 task name."""
+        """Alias of set_description."""
         return self.set_description(item_id, plain_text)
 
     def update(self, item_id: str, data: dict) -> dict:

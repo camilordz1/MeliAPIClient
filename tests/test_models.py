@@ -386,3 +386,13 @@ def test_parse_validation_result_unknown_type_counts_as_error():
 
     assert result.valid is False
     assert len(result.errors) == 1
+
+
+@pytest.mark.parametrize("payload", [None, {}, {"cause": []}])
+def test_parse_validation_result_empty_400_is_invalid(payload):
+    """A 400 without causes fails closed with a synthesized error."""
+    result = parse_validation_result(400, payload)
+
+    assert result.valid is False
+    assert len(result.errors) == 1
+    assert result.errors[0].code == "validation.unknown"

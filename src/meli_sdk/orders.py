@@ -1,8 +1,31 @@
+import re
 from calendar import monthrange
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Union
 
 from .actions import Actions
+
+DEFAULT_UTC_OFFSET = "-05:00"
+_OFFSET_PATTERN = re.compile(r"^([+-])(\d{2}):(\d{2})$")
+
+
+def _parse_utc_offset(utc_offset: str) -> timezone:
+    """Parse a +HH:MM or -HH:MM offset into a fixed timezone."""
+    match = _OFFSET_PATTERN.fullmatch(utc_offset) if isinstance(utc_offset, str) else None
+    if match is None:
+        raise ValueError(
+            f"utc_offset must match +HH:MM or -HH:MM, got {utc_offset!r}"
+        )
+
+    hours = int(match.group(2))
+    minutes = int(match.group(3))
+    if hours > 14 or minutes >= 60:
+        raise ValueError(
+            f"utc_offset must match +HH:MM or -HH:MM, got {utc_offset!r}"
+        )
+
+    sign = -1 if match.group(1) == "-" else 1
+    return timezone(sign * timedelta(hours=hours, minutes=minutes))
 
 
 class Orders:
@@ -12,33 +35,42 @@ class Orders:
         self.client = client
 
     def date(
-        self, year: int = None, month: int = None, start: int = None, end: int = None
+        self,
+        year: int = None,
+        month: int = None,
+        start: int = None,
+        end: int = None,
+        *,
+        utc_offset: str = DEFAULT_UTC_OFFSET,
     ) -> dict:
         """Calcula el rango de fecha para las búsquedas de órdenes."""
-        dt = datetime.now()
+        tz = _parse_utc_offset(utc_offset)
 
-        if year is not None and month is not None:
-            dt = datetime(year, month, 1 if start is None else start)
+        if (year is None) != (month is None):
+            raise ValueError("year and month must be given together")
 
-        if start is not None:
-            start_str = str(start).zfill(2)
+        if year is None:
+            dt = datetime.now(tz)
         else:
-            start_str = "01"
+            dt = datetime(year, month, 1, tzinfo=tz)
 
-        if end is not None:
-            end_str = str(end).zfill(2)
-        else:
-            end_val = monthrange(int(dt.strftime("%Y")), int(dt.strftime("%m")))[1]
-            end_str = str(end_val).zfill(2)
+        last_day = monthrange(dt.year, dt.month)[1]
+        start_day = 1 if start is None else start
+        end_day = last_day if end is None else end
 
-        start_date = dt.strftime(f"%Y-%m-{start_str}T00:00:00.000-00:00")
-        end_date = dt.strftime(f"%Y-%m-{end_str}T23:59:59.000-00:00")
+        if not 1 <= start_day <= last_day or not 1 <= end_day <= last_day:
+            raise ValueError(f"start and end must be days inside the month (1..{last_day})")
+        if start_day > end_day:
+            raise ValueError("start must be less than or equal to end")
+
+        start_date = f"{dt:%Y-%m}-{start_day:02d}T00:00:00.000{utc_offset}"
+        end_date = f"{dt:%Y-%m}-{end_day:02d}T23:59:59.999{utc_offset}"
 
         return {
             "start": start_date,
             "end": end_date,
-            "year": int(dt.strftime("%Y")),
-            "month": str(dt.strftime("%b")),
+            "year": dt.year,
+            "month": dt.strftime("%b"),
         }
 
     def search(
@@ -48,11 +80,19 @@ class Orders:
         limit: int = 50,
         year: int = None,
         month: int = None,
+        *,
+        utc_offset: str = DEFAULT_UTC_OFFSET,
+        status: str = None,
+        sort: str = "date_asc",
+        extra_params: dict = None,
     ) -> dict:
         """
         Busca órdenes del vendedor en un periodo de tiempo.
         Si no se proporciona seller_id, se obtiene del token activo de Mercado Libre.
         """
+        if sort not in ("date_asc", "date_desc"):
+            raise ValueError("sort must be 'date_asc' or 'date_desc'")
+
         if seller_id is None:
             token_data = self.client.token_storage.load_token()
             seller_id = token_data.get("user_id")
@@ -60,18 +100,91 @@ class Orders:
                 raise ValueError("seller_id es requerido o no se pudo obtener del token activo.")
 
         # Obtener rango de fecha
-        date_range = self.date(year, month)
+        date_range = self.date(year, month, utc_offset=utc_offset)
 
         params = {
             "seller": seller_id,
             "order.date_created.from": date_range["start"],
             "order.date_created.to": date_range["end"],
             "limit": limit,
-            "sort": "date_asc",
+            "sort": sort,
             "offset": offset,
         }
+        if status is not None:
+            params["order.status"] = status
+        if extra_params:
+            params.update(extra_params)
 
         return self.client.request("GET", "/orders/search", params=params)
+
+    def iter_all(
+        self,
+        seller_id: int = None,
+        year: int = None,
+        month: int = None,
+        *,
+        status: str = None,
+        sort: str = "date_asc",
+        utc_offset: str = DEFAULT_UTC_OFFSET,
+        page_size: int = 50,
+        extra_params: dict = None,
+    ):
+        """Yield every order of the period, following the search pagination.
+
+        ``page_size`` must be an int between 1 and 50; it is validated on the first ``next()``,
+        because this is a generator.
+        """
+        if (
+            isinstance(page_size, bool)
+            or not isinstance(page_size, int)
+            or not 1 <= page_size <= 50
+        ):
+            raise ValueError("page_size must be an int between 1 and 50")
+
+        if extra_params and ("offset" in extra_params or "limit" in extra_params):
+            raise ValueError("extra_params must not contain 'offset' or 'limit'")
+
+        if year is None and month is None:
+            now = datetime.now(_parse_utc_offset(utc_offset))
+            year, month = now.year, now.month
+
+        if seller_id is None:
+            token_data = self.client.token_storage.load_token()
+            seller_id = token_data.get("user_id")
+            if not seller_id:
+                raise ValueError(
+                    "seller_id es requerido o no se pudo obtener del token activo."
+                )
+
+        offset = 0
+        while True:
+            page = self.search(
+                seller_id=seller_id,
+                offset=offset,
+                limit=page_size,
+                year=year,
+                month=month,
+                status=status,
+                sort=sort,
+                utc_offset=utc_offset,
+                extra_params=extra_params,
+            )
+            results = page.get("results") or []
+            paging = page.get("paging")
+
+            for order in results:
+                yield order
+
+            if not results:
+                return
+
+            offset += len(results)
+            if paging is not None:
+                total = paging.get("total")
+                if total is not None and offset >= total:
+                    return
+            elif len(results) < page_size:
+                return
 
     def get(self, order_id: Union[int, str]) -> dict:
         """Obtiene información de una orden específica."""

@@ -26,17 +26,27 @@ Todos los cambios relevantes de `meli-sdk` se documentan aquí. El formato sigue
   `user_agent=` y sobrescribible por llamada.
 - `bills.upload_fiscal_document` acepta `bytes`, `bytearray` o un objeto de archivo binario, además
   de rutas, y un `filename=` explícito.
+- `orders.iter_all(...)`: generador que recorre todas las páginas de órdenes y acepta `status`,
+  `sort`, `utc_offset`, `page_size` y `extra_params`.
+- `orders.search` acepta `status`, `sort` (`date_asc`/`date_desc`), `utc_offset` y `extra_params`.
 
 ### Corregido
 - La carrera entre renovaciones concurrentes ya no invalida la sesión: el refresh token se canjea
   una sola vez y los hilos que esperan reutilizan el token nuevo.
 - Las peticiones y la renovación del token usan una `requests.Session` persistente y un timeout
   por defecto de 30 segundos.
+- El rango de fechas de `orders.search`/`orders.date` se calcula en hora de Colombia (`-05:00`) y
+  valida que `year` y `month` se pasen juntos y que los días estén dentro del mes.
+- El fin del rango de fechas incluye el último milisegundo del mes (`23:59:59.999`), así que las
+  órdenes creadas en el último segundo ya no quedan fuera de ambos meses.
 - `upload_fiscal_document` envía el documento con `Content-Type: application/pdf`, que Mercado Libre
   exige para aceptar la factura.
 - `has_fiscal_document` ya no devuelve `True` cuando `fiscal_documents` está vacío.
 
 ### Cambios incompatibles
+- El offset por defecto de las búsquedas de órdenes cambia de `-00:00` a `-05:00`, así que los
+  resultados en los bordes de mes (31 de enero por la noche y 1 de marzo de madrugada) cambian.
+  Usa `utc_offset=` para restaurar otro rango.
 - El segundo parámetro de `upload_fiscal_document` se renombra de `file_path` a `document`. Las
   llamadas posicionales siguen funcionando; las que usan `file_path=` deben actualizarse.
 

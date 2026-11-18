@@ -259,6 +259,41 @@ def test_non_seekable_file_is_not_retried(client, mocked, sleeps):
     assert sleeps == []
 
 
+def test_connection_error_retry_rewinds_file(client, mocked, sleeps):
+    """A retried idempotent upload sends the whole file after a dropped connection."""
+    payload = b"PAYLOAD"
+    mocked.add(
+        responses.PUT,
+        f"{API_URL}/items/MLA1",
+        body=requests.ConnectionError("drop"),
+    )
+    mocked.add(responses.PUT, f"{API_URL}/items/MLA1", status=200, json={"ok": True})
+
+    assert client.request(
+        "PUT", "/items/MLA1", files={"f": io.BytesIO(payload)}
+    ) == {"ok": True}
+
+    assert len(mocked.calls) == 2
+    assert payload in mocked.calls[0].request.body
+    assert payload in mocked.calls[1].request.body
+
+
+def test_connection_error_with_non_seekable_file_is_not_retried(client, mocked, sleeps):
+    """A connection error on a non-seekable upload is not retried."""
+    upload = NonSeekableFile(b"PAYLOAD")
+    mocked.add(
+        responses.PUT,
+        f"{API_URL}/items/MLA1",
+        body=requests.ConnectionError("drop"),
+    )
+
+    with pytest.raises(MeliConnectionError):
+        client.request("PUT", "/items/MLA1", files={"f": upload})
+
+    assert len(mocked.calls) == 1
+    assert sleeps == []
+
+
 def test_refresh_is_retried_on_429_only(client, sleeps):
     """The refresh POST is retried on 429 and succeeds."""
     with responses.RequestsMock(assert_all_requests_are_fired=True) as mocked:

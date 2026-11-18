@@ -190,7 +190,11 @@ class MeliClient:
             try:
                 response = self.session.request(method, url, **kwargs)
             except (requests.ConnectionError, requests.Timeout) as exc:
-                if not idempotent or attempt >= self.max_retries:
+                if (
+                    not idempotent
+                    or attempt >= self.max_retries
+                    or not self._rewind_files(kwargs.get("files"))
+                ):
                     raise
                 delay = self._backoff_delay(attempt)
                 self._log_retry(method_name, url, delay, type(exc).__name__, attempt)

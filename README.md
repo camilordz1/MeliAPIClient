@@ -151,6 +151,10 @@ client = MeliClient(
 )
 ```
 
+En el peor caso, una petición puede tardar hasta `(max_retries + 1) × timeout` más las esperas del
+backoff (unos 2 minutos con los valores por defecto) antes de fallar. Para acotar ese tiempo, reduce
+`max_retries` o `timeout`.
+
 ---
 
 ## Persistencia en Bases de Datos (Estrategia `CallbackTokenStorage`)

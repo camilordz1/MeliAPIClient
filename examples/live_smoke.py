@@ -191,7 +191,7 @@ def main() -> int:
 
                 def free_shipping_quote():
                     quote = client.shipments.get_free_shipping_quote(
-                        item_id=sample_item["id"]
+                        item_id=sample_item["id"], seller_id=seller_id
                     )
                     print(
                         f"      billable_weight={quote.billable_weight} "

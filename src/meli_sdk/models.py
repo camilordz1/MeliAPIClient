@@ -2,6 +2,8 @@ import math
 from dataclasses import dataclass, field
 from decimal import Decimal
 
+from .exceptions import MeliAPIError
+
 
 @dataclass(frozen=True)
 class Address:
@@ -92,6 +94,14 @@ class ValidationResult:
     valid: bool
     errors: tuple[ValidationCause, ...]
     warnings: tuple[ValidationCause, ...]
+    raw: dict = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True)
+class UploadedPicture:
+    id: str
+    max_size: str | None
+    secure_url: str | None
     raw: dict = field(repr=False, compare=False)
 
 
@@ -484,3 +494,27 @@ def parse_validation_result(status_code: int, payload: dict | None) -> Validatio
         )
 
     return ValidationResult(valid=not errors, errors=errors, warnings=warnings, raw=data)
+
+
+def parse_uploaded_picture(payload: dict) -> UploadedPicture:
+    """Parse a picture upload response into an UploadedPicture."""
+    data = _as_dict(payload)
+    picture_id = _clean(data.get("id"))
+    if not picture_id:
+        raise MeliAPIError(
+            message="The picture upload response has no id",
+            status_code=200,
+            response_text=str(data),
+        )
+
+    variations = data.get("variations") or []
+    secure_url = None
+    if variations and isinstance(variations[0], dict):
+        secure_url = _clean(variations[0].get("secure_url"))
+
+    return UploadedPicture(
+        id=picture_id,
+        max_size=_clean(data.get("max_size")),
+        secure_url=secure_url,
+        raw=data,
+    )

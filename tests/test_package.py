@@ -22,7 +22,7 @@ def run_in_subprocess(code: str, cwd: Path, env: dict) -> subprocess.CompletedPr
 
 def test_version_is_exposed():
     """The package exposes its distribution version."""
-    assert meli_sdk.__version__ == "1.0.0a1"
+    assert meli_sdk.__version__ == "1.0.0a2"
 
 
 def test_public_api_is_exported():

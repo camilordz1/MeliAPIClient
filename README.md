@@ -128,6 +128,25 @@ client = MeliClient(
 
 ---
 
+## Development
+
+Create a virtual environment and install the project in editable mode together with the
+development dependencies:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements-dev.txt -e .
+```
+
+Run the test suite with pytest:
+
+```bash
+python -m pytest
+```
+
+---
+
 ## Guía de Recursos Disponibles
 
 ### 1. Órdenes (`client.orders`)

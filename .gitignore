@@ -250,3 +250,6 @@ ml_keys.json
 ml_token.json
 ml_user.json
 test
+
+# Code graph cache
+.codegraph/

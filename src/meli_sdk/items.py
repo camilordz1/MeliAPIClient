@@ -48,6 +48,64 @@ class Items:
 
         return self.client.request("GET", f"/users/{seller_id}/items/search", params=params)
 
+    def iter_all(
+        self,
+        seller_id: int = None,
+        *,
+        page_size: int = 100,
+        extra_params: dict = None,
+    ):
+        """Yield the seller's item IDs using scan mode, in API order.
+
+        This yields IDs; use ``get_many`` to fetch the item details. The scan ``scroll_id``
+        expires after 5 minutes, so consume the generator without long pauses.
+
+        ``page_size`` must be an int between 1 and 100 and ``extra_params`` must not contain
+        ``offset``, ``limit``, ``search_type`` or ``scroll_id``; both are validated on the first
+        ``next()``.
+        """
+        if (
+            isinstance(page_size, bool)
+            or not isinstance(page_size, int)
+            or not 1 <= page_size <= 100
+        ):
+            raise ValueError("page_size must be an int between 1 and 100")
+
+        pagination_keys = {"offset", "limit", "search_type", "scroll_id"}
+        if extra_params and pagination_keys.intersection(extra_params):
+            raise ValueError(
+                "extra_params must not contain 'offset', 'limit', 'search_type' or 'scroll_id'"
+            )
+
+        if seller_id is None:
+            token_data = self.client.token_storage.load_token()
+            seller_id = token_data.get("user_id")
+            if not seller_id:
+                raise ValueError(
+                    "seller_id es requerido o no se pudo obtener del token activo."
+                )
+
+        url = f"/users/{seller_id}/items/search"
+        params = {"search_type": "scan", "limit": page_size}
+        if extra_params:
+            params.update(extra_params)
+
+        scroll_id = None
+        while True:
+            current = dict(params)
+            if scroll_id is not None:
+                current["scroll_id"] = scroll_id
+
+            page = self.client.request("GET", url, params=current)
+            results = page.get("results") or []
+
+            for item_id in results:
+                yield item_id
+
+            scroll_id = page.get("scroll_id")
+            if not results or not scroll_id:
+                return
+
     def _format_ids(self, item_ids: Union[str, List[str]]) -> str:
         """Formatea una lista o cadena de IDs de items en un formato separado por comas."""
         if isinstance(item_ids, list):
